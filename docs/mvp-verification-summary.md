@@ -28,7 +28,7 @@
 통과한 명령:
 
 - `node --test tests/domain.test.js`
-  - 20개 테스트 통과
+  - 22개 테스트 통과
 - `node scripts/verify-static-app.js`
   - 정적 앱 파일과 module script 확인 통과
 - `node --check src/domain.js`
@@ -49,6 +49,7 @@
 - 론 샤보 삼암각 제외
 - 쯔모 샤보 삼암각 포함
 - 치또이 25부
+- 치또이형 혼노두
 - 후로 혼일색 감산
 - 쿠이탕
 - 리치/우라도라
@@ -57,6 +58,7 @@
 - 5판 부수 무관
 - 13판 카조에역만
 - 역만 감지 중단
+- 구련보등 감지 중단
 - URL fragment 생성/파싱
 - localStorage 최근계산 복원 데이터 검증
 

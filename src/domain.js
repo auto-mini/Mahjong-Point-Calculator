@@ -272,6 +272,23 @@ function isClosed(shape) {
   return shape.type === "chiitoi" || shape.melds.every((meld) => !meld.open);
 }
 
+function isChurenPoutou(shape) {
+  if (!isClosed(shape)) return false;
+  const tiles = handTilesFromShape(shape).map(normalizeTile);
+  if (tiles.length !== 14) return false;
+  const parsed = tiles.map(parseSuit);
+  if (!parsed.every(Boolean)) return false;
+  const suit = parsed[0].suit;
+  if (!parsed.every((item) => item.suit === suit)) return false;
+  const counts = new Map();
+  for (const item of parsed) counts.set(item.number, (counts.get(item.number) || 0) + 1);
+  return (
+    (counts.get(1) || 0) >= 3 &&
+    (counts.get(9) || 0) >= 3 &&
+    [2, 3, 4, 5, 6, 7, 8].every((number) => (counts.get(number) || 0) >= 1)
+  );
+}
+
 function valuePairFu(pairTile, roundWind, seatWind) {
   const tile = normalizeTile(pairTile);
   let fu = 0;
@@ -343,6 +360,7 @@ function detectYakuman(shape) {
   if (tiles.every(isHonor)) return "자일색";
   if (tiles.every(isGreen)) return "녹일색";
   if (tiles.every(isTerminal)) return "청노두";
+  if (isChurenPoutou(shape)) return "구련보등";
   if (shape.type === "standard") {
     const triplets = shape.melds.filter((meld) => ["triplet", "quad"].includes(meld.kind));
     const tripletTiles = triplets.map((meld) => normalizeTile(meld.tiles[0]));
@@ -377,6 +395,7 @@ function detectYaku(shape, state) {
   if (allSimple) yaku.push({ name: "탕야오", han: 1 });
 
   if (shape.type === "chiitoi") yaku.push({ name: "치또이", han: 2 });
+  if (shape.type === "chiitoi" && tiles.every(isYaochu)) yaku.push({ name: "혼노두", han: 2 });
 
   if (shape.type === "standard") {
     const sequenceMelds = shape.melds.filter((meld) => meld.kind === "sequence");

@@ -156,6 +156,28 @@ test("chiitoi is fixed 25 fu", () => {
   assert.equal(result.yaku.some((item) => item.name === "치또이"), true);
 });
 
+test("chiitoi honroutou includes both yaku", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m1"] },
+      { tiles: ["m9", "m9"] },
+      { tiles: ["p1", "p1"] },
+      { tiles: ["p9", "p9"] },
+      { tiles: ["s1", "s1"] },
+      { tiles: ["s9", "s9"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["p2"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.yaku.some((item) => item.name === "치또이"), true);
+  assert.equal(result.yaku.some((item) => item.name === "혼노두"), true);
+});
+
 test("open honitsu uses the reduced 2 han value", () => {
   const result = calc({
     winMethod: "ron",
@@ -302,6 +324,25 @@ test("yakuman is detected and not scored", () => {
   });
   assert.equal(result.ok, false);
   assert.equal(result.errors[0].startsWith("역만 손패입니다."), true);
+});
+
+test("churen poutou is detected as yakuman and not scored", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m1", "m1"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["m5", "m5"] },
+      { tiles: ["m6", "m7", "m8"] },
+      { tiles: ["m9", "m9", "m9"] },
+    ],
+    winTile: "m5",
+    doraIndicators: ["p2"],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].includes("구련보등"), true);
 });
 
 test("share state round-trips through URL-safe payload", () => {
