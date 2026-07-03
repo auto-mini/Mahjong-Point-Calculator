@@ -1,0 +1,13 @@
+work/__pycache__/
+work/*.png
+
+# Downloaded reference/font/tile source trees used during exploration.
+work/gmarket-sans/
+work/line-seed/
+work/noto-cjk/
+work/noto-fonts/
+work/pretendard/
+work/riichi-mahjong-tiles/
+work/spoqa-han-sans/
+work/SUIT/
+work/wanted-sans/
