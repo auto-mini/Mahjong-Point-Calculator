@@ -1,0 +1,11 @@
+{
+  "name": "riichi-fu-calculator-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/domain.test.js",
+    "build": "node scripts/verify-static-app.js",
+    "start": "node scripts/serve.js"
+  }
+}
