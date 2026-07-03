@@ -61,6 +61,43 @@ test("state validation catches absent win tile and invalid ippatsu", () => {
   assert.equal(errors.includes("일발은 리치 또는 더블리치가 있을 때만 선택할 수 있습니다."), true);
 });
 
+test("dora and ura indicators participate in visible tile quantity validation", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["m1"],
+  }));
+  assert.equal(errors.includes("동일패 5장 이상: 1만이 5장입니다."), true);
+});
+
+test("chankan requires a sequence wait in the supported MVP forms", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    melds: [
+      { tiles: ["m1", "m1", "m1"] },
+      { tiles: ["p2", "p2", "p2"] },
+      { tiles: ["s3", "s3", "s3"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "s3",
+    doraIndicators: ["p9"],
+  }));
+  assert.equal(errors.includes("창깡은 순자 대기에서만 선택할 수 있습니다."), true);
+});
+
 test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {
   const result = calc({
     winMethod: "ron",

@@ -28,7 +28,7 @@
 통과한 명령:
 
 - `node --test tests/domain.test.js`
-  - 22개 테스트 통과
+  - 24개 테스트 통과
 - `node scripts/verify-static-app.js`
   - 정적 앱 파일과 module script 확인 통과
 - `node --check src/domain.js`
@@ -44,6 +44,8 @@
 - 적5 중복
 - 화료패 부재
 - 일발 단독 선택
+- 손패 + 도라/우라 표시패 visible tile 수량 초과
+- 창깡 순자 대기 제한
 - 핑후 쯔모 20부
 - 멘젠 핑후 론 30부
 - 론 샤보 삼암각 제외
