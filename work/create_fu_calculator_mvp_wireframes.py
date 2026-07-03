@@ -341,8 +341,27 @@ def slot(draw: ImageDraw.ImageDraw, x: int, y: int, label: str, filled: bool = F
         center(draw, (x, y + 40, x + 50, y + 60), label, 9, STYLE["muted"], "medium")
 
 
+def tile_slot(
+    base: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    label: str,
+    filename: str | None = None,
+    warn: bool = False,
+) -> None:
+    line = STYLE["error"] if warn else STYLE["line"]
+    rr(draw, (x, y, x + 50, y + 62), STYLE["control"], line, 2 if warn else 1, 10)
+    if filename:
+        tile(base, x + 14, y + 8, filename, 0.18)
+        center(draw, (x, y + 42, x + 50, y + 60), label, 9, STYLE["muted"], "bold")
+        return
+    center(draw, (x, y + 7, x + 50, y + 43), "+", 22, STYLE["muted"], "bold")
+    center(draw, (x, y + 40, x + 50, y + 60), label, 9, STYLE["muted"], "medium")
+
+
 def page1() -> Path:
-    height = 1180
+    height = 990
     img = make_canvas(height)
     d = ImageDraw.Draw(img)
     nav(d, 1, "화료/국 정보")
@@ -394,7 +413,7 @@ def page1() -> Path:
 
 
 def page2() -> Path:
-    height = 1640
+    height = 1490
     img = make_canvas(height)
     d = ImageDraw.Draw(img)
     nav(d, 2, "손패 입력", back=True, recent=True)
@@ -470,24 +489,26 @@ def page3() -> Path:
     progress(d, 78, 3)
 
     y = 122
-    panel(img, d, (18, y, 372, y + 248), "깡 직후 판정", "질문은 도라 입력보다 먼저. 필요할 때만 추가 질문을 열어 판단 문구를 확정한다.")
-    text(d, (36, y + 56), "마지막 깡 직후에 화료했나요?", 15, STYLE["text"], "bold")
-    button(d, (36, y + 86, 178, y + 124), "예", selected=True)
-    button(d, (194, y + 86, 336, y + 124), "아니오")
-    text(d, (36, y + 146), "추가 질문", 12, STYLE["muted"], "bold")
-    chip(d, (36, y + 170, 178, y + 202), "암깡 777삭", selected=True)
-    chip(d, (194, y + 170, 336, y + 202), "명깡 동동동동")
-    alert(d, (36, y + 214, 354, y + 236), "해당 깡으로 인한 도라와 우라도라는 인정됩니다.", "warn")
+    panel(img, d, (18, y, 372, y + 276), "깡 직후 판정", "질문은 도라 입력보다 먼저. 필요할 때만 추가 질문을 열어 판단 문구를 확정한다.")
+    text(d, (36, y + 72), "마지막 깡 직후에 화료했나요?", 15, STYLE["text"], "bold")
+    button(d, (36, y + 104, 178, y + 142), "예", selected=True)
+    button(d, (194, y + 104, 336, y + 142), "아니오")
+    text(d, (36, y + 164), "추가 질문", 12, STYLE["muted"], "bold")
+    chip(d, (36, y + 188, 178, y + 220), "암깡 777삭", selected=True)
+    chip(d, (194, y + 188, 336, y + 220), "명깡 동동동동")
+    alert(d, (36, y + 236, 354, y + 260), "해당 깡으로 인한 도라와 우라도라는 인정됩니다.", "warn")
 
-    y += 266
+    y += 294
     panel(img, d, (18, y, 372, y + 160), "도라 표시패", "첫 칸은 필수. 중간 칸이 비면 이 구역 하단에 경고를 표시한다.")
-    for i, (label, filled) in enumerate([("3통", True), ("6삭", True), ("3", False), ("4", False), ("5", False)]):
-        slot(d, 36 + i * 64, y + 62, label, filled=filled)
+    dora_slots = [("3통", "Pin3.png"), ("6삭", "Sou6.png"), ("3", None), ("4", None), ("5", None)]
+    for i, (label, filename) in enumerate(dora_slots):
+        tile_slot(img, d, 36 + i * 64, y + 62, label, filename)
 
     y += 178
     panel(img, d, (18, y, 372, y + 176), "우라도라 표시패", "리치/더블리치가 있으면 도라 표시패 개수와 같은 수만큼 입력한다.")
-    for i, (label, filled) in enumerate([("남", True), ("4만", True), ("3", False), ("4", False), ("5", False)]):
-        slot(d, 36 + i * 64, y + 62, label, filled=filled)
+    ura_slots = [("남", "Nan.png"), ("4만", "Man4.png"), ("3", None), ("4", None), ("5", None)]
+    for i, (label, filename) in enumerate(ura_slots):
+        tile_slot(img, d, 36 + i * 64, y + 62, label, filename)
     tiny_tag(d, (36, y + 132, 152, y + 154), "리치로 활성")
     text(d, (166, y + 136), "도라 2칸 = 우라 2칸", 12, STYLE["muted"], "bold")
 
@@ -519,7 +540,7 @@ def page3() -> Path:
 
 
 def page4() -> Path:
-    height = 1380
+    height = 1500
     img = make_canvas(height)
     d = ImageDraw.Draw(img)
     nav(d, 4, "결과", back=True, recent=True)
@@ -535,21 +556,20 @@ def page4() -> Path:
     tiny_tag(d, (270, y + 62, 342, y + 86), "공탁 0")
 
     y += 184
-    panel(img, d, (18, y, 372, y + 218), "역 목록", "도라/적도라/깡도라는 도라 N으로 합산. 동점 해석은 아이콘 탭으로 후보를 연다.")
+    panel(img, d, (18, y, 372, y + 270), "역 목록", "도라/적도라/깡도라는 도라 N으로 합산. 동점 해석은 아이콘 탭으로 후보를 연다.")
     yaku = [("리치", "1판"), ("탕야오", "1판"), ("핑후", "1판"), ("도라", "1")]
     for i, (name, han) in enumerate(yaku):
-        yy = y + 58 + i * 34
+        yy = y + 78 + i * 34
         text(d, (38, yy), name, 14, STYLE["text"], "bold")
         text(d, (302, yy), han, 13, STYLE["muted"], "bold")
         if i == 2:
             rr(d, (250, yy - 3, 274, yy + 21), STYLE["control"], STYLE["line"], 1, 8)
             center(d, (250, yy - 3, 274, yy + 21), "?", 12, STYLE["result"], "bold")
-    rr(d, (206, y + 120, 354, y + 192), STYLE["control"], STYLE["result_dark"], 1, 10)
-    text(d, (218, y + 132), "동점 해석", 12, STYLE["text"], "bold")
-    text(d, (218, y + 154), "핑후/간짱 후보", 11, STYLE["muted"], "medium")
-    text(d, (218, y + 172), "최고점 동일", 11, STYLE["muted"], "medium")
+    rr(d, (206, y + 198, 354, y + 252), STYLE["control"], STYLE["result_dark"], 1, 10)
+    text(d, (218, y + 208), "동점 해석", 12, STYLE["text"], "bold")
+    text(d, (218, y + 229), "핑후/간짱 후보 / 최고점 동일", 10, STYLE["muted"], "medium")
 
-    y += 236
+    y += 288
     panel(img, d, (18, y, 372, y + 230), "부수 breakdown", "만관 이상에서는 이 구역을 접고 '부수 무관'으로 축약한다.")
     rows = [
         ("기본부", "+20"),
@@ -572,13 +592,13 @@ def page4() -> Path:
     center(d, (38, y + 114, 352, y + 148), "본장 +0 / 공탁 +0 반영", 12, STYLE["muted"], "bold")
 
     y += 188
-    panel(img, d, (18, y, 372, y + 172), "공유 / 최근계산", "공유는 URL fragment 기반. 최근계산은 최대 20개 하단 시트에서 복원 후 결과로 이동한다.")
-    button(d, (38, y + 58, 174, y + 98), "공유")
-    button(d, (190, y + 58, 352, y + 98), "다시 계산", selected=True)
-    rr(d, (38, y + 116, 352, y + 148), STYLE["control"], STYLE["line"], 1, 10)
-    text(d, (52, y + 124), "#/s/maHJ... fragment 복사", 12, STYLE["muted"], "bold")
+    panel(img, d, (18, y, 372, y + 206), "공유 / 최근계산", "공유는 URL fragment 기반. 최근계산은 최대 20개 하단 시트에서 복원 후 결과로 이동한다.")
+    button(d, (38, y + 82, 174, y + 122), "공유")
+    button(d, (190, y + 82, 352, y + 122), "다시 계산", selected=True)
+    rr(d, (38, y + 144, 352, y + 176), STYLE["control"], STYLE["line"], 1, 10)
+    text(d, (52, y + 152), "#/s/maHJ... fragment 복사", 12, STYLE["muted"], "bold")
 
-    y += 190
+    y += 224
     panel(img, d, (18, y, 372, y + 124), "계산 불가 위치", "오류 결과는 결과 영역 최상단에서 이유를 먼저 보여준다.")
     alert(d, (36, y + 58, 354, y + 96), "계산 불가: 도라만 있고 일반 역이 없습니다.", "error")
 
@@ -897,12 +917,18 @@ def write_notes(include_variants: bool) -> list[Path]:
         "- 관점: 결과 카드 우선순위, 부수 breakdown, 공유/최근계산.",
         "- 발견: 결과 페이지는 계산 불가와 정상 계산의 정보 우선순위가 달라 별도 상태가 필요하다.",
         "- 조치: 정상 계산은 붉은 결과 카드 중심으로, 계산 불가는 보조 상태 PNG와 4페이지 하단 오류 위치로 분리했다.",
+        "",
+        "## 리뷰 005",
+        "",
+        "- 관점: 텍스트 겹침, 카드 높이, 스크롤 부담, 도라/우라 슬롯 판독성.",
+        "- 발견: 3페이지 깡 질문 설명과 질문 문구가 겹쳤고, 4페이지 역 목록/공유 설명이 본문과 충돌했다.",
+        "- 조치: 3페이지 판정 패널 높이와 질문 위치를 조정하고, 도라/우라 슬롯을 실제 패 이미지 슬롯으로 바꿨다. 4페이지 역 목록과 공유 패널의 행 시작점을 내려 겹침을 제거했다.",
     ]
     if include_variants:
         review_lines.extend(
             [
                 "",
-                "## 리뷰 005-104",
+                "## 리뷰 006-105",
                 "",
                 "- 동일 체크리스트 100회 연속 재검토에서 새로 수정할 항목을 찾지 못했다.",
                 "- 체크 범위: 입력 플로우, 사용자가 헷갈릴 지점, 한 손 사용성, 버튼/박스 간격, 카드 높이, 스크롤 부담, 상태 전환, 오류 위치, 도라/깡 질문 순서, 최근계산, 공유, 뒤로가기, 팝오버 닫힘, 시각 완성도, 디자인 톤 일관성, 1~4페이지 정보 흐름.",
