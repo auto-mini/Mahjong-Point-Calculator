@@ -38,7 +38,9 @@ Windows 방화벽이 Node.js 접근을 물으면 개인 네트워크에서 허�
 ## 아무데서나 접속 가능하게 배포
 
 현재는 GitHub Actions가 `main` push 때 `npm test`, `npm run build`를 실행하고,
-생성된 `dist/`를 `gh-pages` 브랜치로 배포한다.
+생성된 `dist/`를 `gh-pages` 브랜치로 배포한다. GitHub Pages는 `dist/_headers`를
+적용하지 않으므로 공개 사이트의 CSP/Referrer 정책은 `index.html`의 meta 태그가
+담당한다.
 
 수동 배포가 필요하면 GitHub Actions의 `Deploy static site` 워크플로를 직접 실행한다.
 
@@ -71,3 +73,5 @@ GitHub Pages URL이 아닌 별도 도메인이 필요할 때만 외부 계정/�
 - 공유 링크 상태는 URL의 `#s=` 뒤 fragment에 들어간다. fragment는 일반 HTTP 요청으로 서버에 전송되지 않는다.
 - 정적 산출물에는 개발용 문서, 테스트, 작업 파일을 넣지 않는다.
 - 로컬 프리뷰 서버도 `dist`만 서빙하고, 기본 보안 헤더를 붙인다.
+- Cloudflare Pages나 Netlify처럼 `_headers` 파일을 지원하는 호스팅에서는 `dist/_headers`가 추가 보안 헤더를 제공한다.
+- GitHub Pages는 커스텀 응답 헤더를 직접 지정할 수 없으므로, 응답 헤더까지 엄격히 통제해야 한다면 Cloudflare Pages 같은 호스팅으로 옮긴다.
