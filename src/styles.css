@@ -55,9 +55,9 @@ button {
       box-shadow 140ms ease;
   }
 
-  .tile-button .tile-image,
-  .candidate-box .tile-image,
-  .slot .tile-image {
+  .tile-button .tile,
+  .candidate-box .tile,
+  .slot .tile {
     transition:
       transform 180ms cubic-bezier(.16, 1.25, .32, 1),
       filter 140ms ease;
@@ -88,12 +88,12 @@ button {
     animation: snapPress 260ms ease;
   }
 
-  .tile-button.tap-press .tile-image,
-  .tile-button.tap-snap .tile-image,
-  .candidate-box.tap-press .tile-image,
-  .candidate-box.tap-snap .tile-image,
-  .slot.tap-press .tile-image,
-  .slot.tap-snap .tile-image {
+  .tile-button.tap-press .tile,
+  .tile-button.tap-snap .tile,
+  .candidate-box.tap-press .tile,
+  .candidate-box.tap-snap .tile,
+  .slot.tap-press .tile,
+  .slot.tap-snap .tile {
     transform: rotate(-2deg) translateY(-2px) scale(1.035);
     filter: drop-shadow(0 4px 4px rgba(63, 38, 18, 0.18));
   }
@@ -825,6 +825,17 @@ h1 {
 .recent-clear {
   width: 100%;
   margin-top: 8px;
+}
+
+.alternative-item {
+  display: grid;
+  gap: 6px;
+}
+
+.alternative-yaku {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .copy-box {

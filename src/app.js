@@ -645,7 +645,7 @@ function resultView(result) {
     el("section", { className: "result-card" }, [
       el("div", { className: "result-role", text: `${result.score.dealer ? "오야" : "자"} ${state.winMethod === "ron" ? "론" : "쯔모"}` }),
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
-      el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
+      el("div", { className: "subscore", text: scoreDetailLabel(result) }),
     ]),
     panel("역 목록", "도라/적도라/깡도라는 도라 N으로 합산한다.", [
       el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
@@ -710,7 +710,16 @@ function paymentDisplay(score) {
 }
 
 function hanFuLabel(result) {
-  return result.score.limitName ? `${result.han}판` : `${result.han}판 ${result.fu}부`;
+  return result.fu === null ? `${result.han}판` : `${result.han}판 ${result.fu}부`;
+}
+
+function scoreDetailLabel(result) {
+  if (result.score.limitName && result.fu !== null) return `${hanFuLabel(result)} / ${result.score.limitName}`;
+  return result.score.limitName || hanFuLabel(result);
+}
+
+function yakuSummary(yaku) {
+  return yaku.map((item) => `${item.name} ${item.han}판`).join(", ");
 }
 
 function errorResult(errors) {
@@ -990,7 +999,13 @@ function renderModal() {
         el("h2", { text: "동점 해석" }),
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
-      ...modal.alternatives.map((item) => el("div", { className: "recent-item", text: `${totalScoreDisplay(item.score)} / ${hanFuLabel(item)}` })),
+      el("p", { className: "panel-note", text: "현재 결과와 총점/판수가 같은 다른 자동분해 후보입니다. 점수는 바뀌지 않고, 아래 역 구성이 후보별 차이입니다." }),
+      el("div", { className: "recent-list" }, modal.alternatives.map((item, index) =>
+        el("div", { className: "recent-item alternative-item" }, [
+          el("strong", { text: `후보 ${index + 1} · ${totalScoreDisplay(item.score)} / ${scoreDetailLabel(item)}` }),
+          el("span", { className: "alternative-yaku", text: yakuSummary(item.yaku) }),
+        ]),
+      )),
     ];
   } else if (modal?.type === "fu-details") {
     body = [
