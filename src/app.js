@@ -17,6 +17,7 @@ import {
 
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
 const app = document.querySelector("#app");
+const TILE_IMAGE_CACHE = new Map();
 
 let initialShareError = null;
 let lastSavedRecentKey = null;
@@ -71,7 +72,7 @@ function el(tag, options = {}, children = []) {
 
 function render() {
   latestResult = calculate(state);
-  app.replaceChildren(nav(), progress(), page());
+  app.replaceChildren(nav(), page());
   document.body.append(...renderModal());
 }
 
@@ -120,7 +121,6 @@ function page() {
 function panel(title, note, children = []) {
   return el("section", { className: "panel" }, [
     el("h2", { text: title }),
-    note ? el("p", { className: "panel-note", text: note }) : null,
     ...children,
   ]);
 }
@@ -134,13 +134,12 @@ function chip(label, active, onClick, disabled = false) {
 }
 
 function pageOne() {
-  const errors = !state.winMethod ? [el("div", { className: "alert", text: "론/쯔모를 선택해주세요." })] : [];
   return el("div", {}, [
     initialShareError ? el("div", { className: "alert page-alert", text: initialShareError }) : null,
-    panel("화료 방식", "초기 상태는 미선택. 둘 중 하나를 골라야 다음 단계로 진행한다.", [
+    panel("화료 방식", null, [
       el("div", { className: "button-grid" }, [
-        button("론", state.winMethod === "ron", () => setState({ winMethod: "ron" }), "primary"),
-        button("쯔모", state.winMethod === "tsumo", () => setState({ winMethod: "tsumo" }), "primary"),
+        button("론", state.winMethod === "ron", () => setWinMethod("ron"), "primary"),
+        button("쯔모", state.winMethod === "tsumo", () => setWinMethod("tsumo"), "primary"),
       ]),
     ]),
     panel("국 정보", null, [
@@ -151,12 +150,15 @@ function pageOne() {
         stepper("공탁", state.riichiSticks, (value) => setState({ riichiSticks: value })),
       ]),
     ]),
-    panel("특정 상황역", "상충되는 항목은 선택 즉시 해제하거나 비활성화한다.", [
+    panel("특정 상황역", null, [
       el("div", { className: "chip-grid two" }, situationChips()),
     ]),
-    panel("검증", null, errors.length ? errors : [el("div", { className: "ok-note", text: "필수 입력이 완료되었습니다." })]),
     footer([{ label: "손패 입력으로", primary: true, disabled: !canStepOneContinue(), onClick: () => goNext() }]),
   ]);
+}
+
+function setWinMethod(method) {
+  setState({ winMethod: state.winMethod === method ? null : method });
 }
 
 function windSection(label, key) {
@@ -225,28 +227,34 @@ function toggleSituation(key) {
 
 function pageTwo() {
   const complete = isHandComplete();
-  const errors = handErrors();
+  const errors = visibleHandErrors();
   return el("div", {}, [
-    panel("현재 손패", "세트별 박스와 삭제 버튼. 14장 미만이면 패 선택 영역이 열린다.", [
+    panel("현재 손패", null, [
       state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index))) : el("p", { className: "panel-note", text: "아직 입력된 세트가 없습니다." }),
       el("p", { className: "panel-note", text: `현재 ${flattenMelds(state.melds).length}장 / ${complete ? "완성 후보 있음" : "미완성"}` }),
     ]),
     complete
-      ? panel("화료패 영역", "현재 손패 안의 중복 제거된 패만 후보로 보여준다.", [
+      ? panel("화료패", null, [
           el("div", { className: "win-candidates" }, winningTileCandidates(state.melds).map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
     !complete
-      ? panel("패 선택", "37종 패 중 하나를 누르면 후보군이 열린다.", [
-          tileGrid(ALL_TILES_37, selectedTile, (tile) => {
-            selectedTile = selectedTile === tile ? null : tile;
-            selectedCandidate = null;
-            render();
-          }),
+      ? panel("패 선택", null, [
+          selectedTile
+            ? el("div", { className: "selected-tile-row" }, [tileButton(selectedTile, () => {
+                selectedTile = null;
+                selectedCandidate = null;
+                render();
+              }, true)])
+            : tileGrid(ALL_TILES_37, selectedTile, (tile) => {
+                selectedTile = tile;
+                selectedCandidate = null;
+                render();
+              }),
         ])
       : null,
     selectedTile && !complete ? candidatePanel() : null,
-    panel("오류 노출", null, errors.length ? errors.map((message) => el("div", { className: "alert", text: message })) : [el("div", { className: "ok-note", text: "손패 입력을 계속 진행할 수 있습니다." })]),
+    errors.length ? panel("확인 필요", null, errors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([
       { label: "전체 초기화", onClick: () => resetHand() },
       { label: "도라 입력으로", primary: true, disabled: !canStepTwoContinue(), onClick: () => goNext() },
@@ -286,7 +294,16 @@ function tileButton(tile, onClick, active = false) {
 }
 
 function tileFace(tile, selected = false) {
-  return el("span", { className: `tile ${tile.endsWith("5r") ? "red-five" : ""} ${selected ? "selected" : ""}`, text: shortTile(tile) });
+  return el("span", { className: `tile ${tile.endsWith("5r") ? "red-five" : ""} ${selected ? "selected" : ""}` }, [
+    el("img", {
+      className: "tile-image",
+      attrs: {
+        src: tileImageSrc(tile),
+        alt: tileLabel(tile),
+        draggable: "false",
+      },
+    }),
+  ]);
 }
 
 function tileRow(tiles, selectedTileForHighlight = null) {
@@ -294,26 +311,46 @@ function tileRow(tiles, selectedTileForHighlight = null) {
 }
 
 function candidatePanel() {
-  const groups = groupCandidates(candidateMeldsFor(selectedTile));
-  return panel("후보군", "머리는 즉시 등록, 몸통은 후로여부 O/X를 선택해 등록한다.", [
-    el(
-      "div",
-      { className: "candidate-section" },
-      Object.entries(groups).map(([kind, candidates]) =>
-        el("div", { className: "candidate-group" }, [
-          el("div", { className: "label", text: kindLabel(kind) }),
-          el("div", { className: "candidate-options" }, candidates.map((candidate) => candidateBox(candidate))),
-        ]),
-      ),
-    ),
+  const candidates = viableCandidatesForSelectedTile();
+  const groups = groupCandidates(candidates);
+  return panel("후보군", null, [
     selectedCandidate
-      ? el("div", { className: "candidate-controls" }, [
-          el("span", { className: "label", text: "후로여부" }),
-          el("button", { className: "candidate-action", text: "O", onClick: () => addCandidate(selectedCandidate, true) }),
-          el("button", { className: "candidate-action active", text: "X", onClick: () => addCandidate(selectedCandidate, false) }),
+      ? el("div", { className: "selected-candidate" }, [
+          candidateBox(selectedCandidate),
+          el("div", { className: "candidate-controls" }, [
+            el("span", { className: "label", text: "후로여부" }),
+            el("div", { className: "candidate-action-row" }, [
+              el("button", { className: "candidate-action", text: "O", onClick: () => addCandidate(selectedCandidate, true) }),
+              el("button", { className: "candidate-action", text: "X", onClick: () => addCandidate(selectedCandidate, false) }),
+            ]),
+          ]),
         ])
-      : null,
+      : el(
+          "div",
+          { className: "candidate-section" },
+          Object.entries(groups).map(([kind, groupCandidates]) =>
+            el("div", { className: "candidate-group" }, [
+              el("div", { className: "label", text: kindLabel(kind) }),
+              el("div", { className: "candidate-options" }, groupCandidates.map((candidate) => candidateBox(candidate))),
+            ]),
+          ),
+        ),
   ]);
+}
+
+function viableCandidatesForSelectedTile() {
+  const usedTiles = flattenMelds(state.melds);
+  return candidateMeldsFor(selectedTile).filter((candidate) => !candidateWouldBreakTileCounts(candidate, usedTiles));
+}
+
+function candidateWouldBreakTileCounts(candidate, usedTiles) {
+  const tiles = [...usedTiles, ...candidate.tiles];
+  const normalizedCounts = new Map();
+  for (const tile of tiles.map((item) => item.endsWith("5r") ? `${item[0]}5` : item)) {
+    normalizedCounts.set(tile, (normalizedCounts.get(tile) || 0) + 1);
+  }
+  if ([...normalizedCounts.values()].some((count) => count > 4)) return true;
+  return ["m5r", "p5r", "s5r"].some((red) => tiles.filter((tile) => tile === red).length > 1);
 }
 
 function groupCandidates(candidates) {
@@ -325,7 +362,7 @@ function groupCandidates(candidates) {
 }
 
 function candidateBox(candidate) {
-  const active = selectedCandidate && selectedCandidate.tiles.join(",") === candidate.tiles.join(",") && selectedCandidate.kind === candidate.kind;
+  const active = selectedCandidate && candidateKey(selectedCandidate) === candidateKey(candidate);
   return el("button", {
     className: `candidate-box ${active ? "active" : ""}`,
     onClick: () => {
@@ -336,6 +373,10 @@ function candidateBox(candidate) {
       }
     },
   }, [tileRow(candidate.tiles)]);
+}
+
+function candidateKey(candidate) {
+  return `${candidate.kind}:${candidate.tiles.join(",")}`;
 }
 
 function addCandidate(candidate, open) {
@@ -360,21 +401,35 @@ function resetHand() {
 function pageThree() {
   const doraErrors = doraValidationErrors();
   const needsUra = state.situation.riichi || state.situation.doubleRiichi;
+  const shouldAskLastKanClosed = shouldAskLastKanClosedQuestion();
+  const kanText = kanJudgementText();
+  const activePicker = picker;
   return el("div", {}, [
-    panel("깡 직후 판정", "도라 입력보다 먼저 마지막 깡 직후 화료 여부를 확인한다.", [
+    panel("깡 직후 판정", null, [
       el("div", { className: "button-grid" }, [
-        button("예", state.lastKanWin === true, () => setState({ lastKanWin: true }), "primary"),
-        button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false })),
+        button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
+        button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
       ]),
-      state.lastKanWin === true ? el("div", { className: "ok-note", text: kanJudgementText() }) : null,
+      shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
+      kanText ? el("div", { className: kanText.recognized ? "ok-note" : "alert", text: kanText.text }) : null,
     ]),
-    indicatorPanel("도라 표시패", "첫 칸은 필수. 중간 칸 누락은 차단한다.", "doraIndicators", false),
-    indicatorPanel("우라도라 표시패", "리치/더블리치가 있을 때 도라 개수와 같은 수만큼 입력한다.", "uraIndicators", !needsUra),
-    panel("표시패 선택", "슬롯을 누르면 34종 표시패 선택 UI가 열린다. 적5는 별도 타입으로 두지 않는다.", [
-      picker ? tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile)) : el("p", { className: "panel-note", text: "입력할 슬롯을 선택하세요." }),
+    indicatorPanel("도라 표시패", null, "doraIndicators", false),
+    indicatorPanel("우라도라 표시패", null, "uraIndicators", !needsUra),
+    panel("표시패 선택", null, [
+      activePicker ? tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker)) : el("p", { className: "panel-note", text: "입력할 슬롯을 선택하세요." }),
     ]),
-    panel("확인 조건", null, doraErrors.length ? doraErrors.map((message) => el("div", { className: "alert", text: message })) : [el("div", { className: "ok-note", text: "결과를 볼 수 있습니다." })]),
+    shouldShowDoraErrors() && doraErrors.length ? panel("확인 필요", null, doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
+  ]);
+}
+
+function lastKanClosedQuestion() {
+  return el("div", { className: "kan-extra" }, [
+    el("div", { className: "label", text: "마지막 깡 종류" }),
+    el("div", { className: "button-grid" }, [
+      button("안깡", state.lastKanClosed === true, () => setState({ lastKanClosed: true }), "primary"),
+      button("안깡 아님", state.lastKanClosed === false, () => setState({ lastKanClosed: false })),
+    ]),
   ]);
 }
 
@@ -392,8 +447,8 @@ function indicatorPanel(title, note, key, disabled) {
             if (tile) {
               const next = [...values];
               next[index] = null;
-              setState({ [key]: next });
               picker = null;
+              setState({ [key]: next });
             } else {
               picker = { key, index };
               render();
@@ -409,31 +464,32 @@ function normalizedSlots(values) {
   return Array.from({ length: 5 }, (_, index) => values[index] || null);
 }
 
-function setIndicatorTile(tile) {
-  if (!picker) return;
-  const next = normalizedSlots(state[picker.key]);
-  next[picker.index] = tile;
-  setState({ [picker.key]: next });
+function setIndicatorTile(tile, target = picker) {
+  if (!target) return;
+  const next = normalizedSlots(state[target.key]);
+  next[target.index] = tile;
   picker = null;
+  setState({ [target.key]: next });
 }
 
 function kanJudgementText() {
-  return state.situation.riichi || state.situation.doubleRiichi
-    ? "해당 깡으로 인한 도라와 우라도라는 인정됩니다. 포함하여 입력해주세요."
-    : "해당 깡으로 인한 도라는 인정됩니다. 포함하여 입력해주세요.";
+  if (state.lastKanWin !== true) return null;
+  if (needsLastKanClosedQuestion()) return null;
+  const withUra = state.situation.riichi || state.situation.doubleRiichi;
+  const label = withUra ? "도라와 우라도라" : "도라";
+  const recognized = isLastKanDoraRecognized();
+  return {
+    recognized,
+    text: recognized
+      ? `해당 깡으로 인한 ${label}는 인정됩니다. 포함하여 입력해주세요.`
+      : `해당 깡으로 인한 ${label}는 인정되지 않습니다. 제외하고 입력해주세요.`,
+  };
 }
 
 function pageFour() {
   const result = calculate(state);
   return el("div", {}, [
     result.ok ? resultView(result) : errorResult(result.errors),
-    panel("공유 / 최근계산", "공유는 URL fragment 기반이고, 최근계산은 최대 20개까지 저장한다.", [
-      el("div", { className: "button-grid" }, [
-        el("button", { className: "choice", text: "공유", onClick: () => shareCurrentState() }),
-        el("button", { className: "choice primary active", text: "기록 저장", onClick: () => saveRecent(result) }),
-      ]),
-      el("div", { className: "copy-box", text: `${location.origin}${location.pathname}#s=${encodeShareState(state)}` }),
-    ]),
     footer([
       { label: "공유", onClick: () => shareCurrentState() },
       { label: "다시 계산", primary: true, onClick: () => resetAll() },
@@ -524,7 +580,7 @@ function canStepTwoContinue() {
 }
 
 function canStepThreeContinue() {
-  return doraValidationErrors().length === 0;
+  return doraValidationErrors().length === 0 && !needsLastKanClosedQuestion();
 }
 
 function handErrors() {
@@ -535,9 +591,17 @@ function handErrors() {
   return messages;
 }
 
+function visibleHandErrors() {
+  const errors = handErrors();
+  if (!state.melds.length) return [];
+  if (!isHandComplete()) return [];
+  return errors;
+}
+
 function doraValidationErrors() {
   const messages = [];
   if (state.lastKanWin === null) messages.push("마지막 깡 직후 질문에 응답해주세요.");
+  if (needsLastKanClosedQuestion()) messages.push("마지막 깡 종류를 선택해주세요.");
   const dora = normalizedSlots(state.doraIndicators);
   if (!dora[0]) messages.push("도라 첫 칸을 입력해주세요.");
   if (hasMiddleGap(dora)) messages.push("도라 중간 칸이 비어 있습니다.");
@@ -547,6 +611,10 @@ function doraValidationErrors() {
     if (leadingCount(ura) !== leadingCount(dora)) messages.push("우라도라 개수가 도라 표시패 개수와 다릅니다.");
   }
   return messages;
+}
+
+function shouldShowDoraErrors() {
+  return normalizedSlots(state.doraIndicators).some(Boolean) || normalizedSlots(state.uraIndicators).some(Boolean);
 }
 
 function leadingCount(values) {
@@ -583,6 +651,72 @@ function resetAll() {
 function shortTile(tile) {
   const label = tileLabel(tile);
   return label.replace("만", "萬").replace("통", "筒").replace("삭", "索").replace("적5", "赤");
+}
+
+function tileImageSrc(tile) {
+  if (TILE_IMAGE_CACHE.has(tile)) return TILE_IMAGE_CACHE.get(tile);
+  const parts = tileImageParts(tile);
+  const red = tile.endsWith("5r");
+  const mainFill = red ? "#b34239" : "#251f18";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="76" viewBox="0 0 56 76">
+      <defs>
+        <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.1" flood-color="#17483f" flood-opacity=".45"/>
+        </filter>
+      </defs>
+      <rect x="5" y="4" width="42" height="64" rx="8" fill="#fbf8ec" stroke="#5f8d82" stroke-width="2" filter="url(#s)"/>
+      <path d="M44 8c4 2 6 5 6 10v40c0 5-3 9-7 10V8z" fill="#74a99a"/>
+      <path d="M10 10h30" stroke="#fffef7" stroke-width="2" opacity=".9"/>
+      <text x="25" y="${parts.sub ? 35 : 43}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${parts.main.length > 1 ? 19 : 24}" font-weight="800" fill="${mainFill}">${escapeSvg(parts.main)}</text>
+      ${parts.sub ? `<text x="25" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="${mainFill}">${escapeSvg(parts.sub)}</text>` : ""}
+    </svg>
+  `.trim();
+  const uri = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  TILE_IMAGE_CACHE.set(tile, uri);
+  return uri;
+}
+
+function tileImageParts(tile) {
+  const normalized = tile.endsWith("5r") ? `${tile[0]}5` : tile;
+  const match = /^([mps])([1-9])$/.exec(normalized);
+  if (match) {
+    return {
+      main: tile.endsWith("5r") ? "赤5" : match[2],
+      sub: { m: "만", p: "통", s: "삭" }[match[1]],
+    };
+  }
+  return { main: tileLabel(tile), sub: "" };
+}
+
+function escapeSvg(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function quads() {
+  return state.melds.filter((meld) => meld.kind === "quad");
+}
+
+function needsLastKanClosedQuestion() {
+  return shouldAskLastKanClosedQuestion() && state.lastKanClosed === null;
+}
+
+function shouldAskLastKanClosedQuestion() {
+  const handQuads = quads();
+  return state.lastKanWin === true && handQuads.length >= 2 && handQuads.some((meld) => meld.open) && handQuads.some((meld) => !meld.open);
+}
+
+function isLastKanDoraRecognized() {
+  if (state.situation.chankan) return false;
+  const handQuads = quads();
+  if (!handQuads.length) return false;
+  const lastKanClosed = state.lastKanClosed ?? (handQuads.length === 1 ? !handQuads[0].open : !handQuads.some((meld) => meld.open));
+  if (state.situation.rinshan) return lastKanClosed;
+  return true;
 }
 
 function kindLabel(kind) {

@@ -155,6 +155,17 @@ function uniqueTiles(tiles) {
   return [...new Set(tiles.map(normalizeTile))].sort((a, b) => tileSortKey(a).localeCompare(tileSortKey(b)));
 }
 
+function uniquePhysicalTiles(tiles) {
+  const seen = new Set();
+  const result = [];
+  for (const tile of tiles) {
+    if (seen.has(tile)) continue;
+    seen.add(tile);
+    result.push(tile);
+  }
+  return result;
+}
+
 function removeTiles(counts, tiles) {
   const next = new Map(counts);
   for (const tile of tiles.map(normalizeTile)) {
@@ -609,6 +620,7 @@ export function defaultState() {
     melds: [],
     winTile: null,
     lastKanWin: null,
+    lastKanClosed: null,
     doraIndicators: [],
     uraIndicators: [],
   };
@@ -668,6 +680,7 @@ export function sanitizeStatePayload(payload) {
     melds: safeMelds(raw.melds),
     winTile: safeTile(raw.winTile, ALL_TILES_37),
     lastKanWin: raw.lastKanWin === true || raw.lastKanWin === false ? raw.lastKanWin : null,
+    lastKanClosed: raw.lastKanClosed === true || raw.lastKanClosed === false ? raw.lastKanClosed : null,
     doraIndicators: safeIndicators(raw.doraIndicators),
     uraIndicators: safeIndicators(raw.uraIndicators),
   });
@@ -818,27 +831,24 @@ export function candidateMeldsFor(tile) {
   const normalized = normalizeTile(tile);
   const parsed = parseSuit(normalized);
   const candidates = [
-    { kind: "pair", tiles: [tile, tile] },
-    { kind: "triplet", tiles: [tile, tile, tile] },
-    { kind: "quad", tiles: [tile, tile, tile, tile] },
+    ...sameTileCandidateTiles(tile, 2).map((tiles) => ({ kind: "pair", tiles })),
+    ...sameTileCandidateTiles(tile, 3).map((tiles) => ({ kind: "triplet", tiles })),
+    ...sameTileCandidateTiles(tile, 4).map((tiles) => ({ kind: "quad", tiles })),
   ];
   if (parsed) {
     for (const start of [parsed.number - 2, parsed.number - 1, parsed.number]) {
       if (start >= 1 && start <= 7) {
-        candidates.push({
-          kind: "sequence",
-          tiles: [`${parsed.suit}${start}`, `${parsed.suit}${start + 1}`, `${parsed.suit}${start + 2}`].map((item) =>
-            item === normalized ? tile : item,
-          ),
-        });
+        for (const tiles of sequenceCandidateTiles(tile, parsed.suit, start)) {
+          candidates.push({ kind: "sequence", tiles });
+        }
       }
     }
   }
-  return candidates;
+  return dedupeCandidates(candidates);
 }
 
 export function winningTileCandidates(melds) {
-  return uniqueTiles(flattenMelds(melds || []));
+  return uniquePhysicalTiles(flattenMelds(melds || []));
 }
 
 export function encodeShareState(state) {
@@ -853,10 +863,48 @@ export function encodeShareState(state) {
     melds: (state.melds || []).map((meld) => ({ tiles: meld.tiles, open: Boolean(meld.open) })),
     winTile: state.winTile,
     lastKanWin: state.lastKanWin,
+    lastKanClosed: state.lastKanClosed,
     doraIndicators: state.doraIndicators || [],
     uraIndicators: state.uraIndicators || [],
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function sameTileCandidateTiles(tile, length) {
+  const normalized = normalizeTile(tile);
+  const parsed = parseSuit(normalized);
+  if (!parsed || parsed.number !== 5) return [Array.from({ length }, () => tile)];
+  const normal = `${parsed.suit}5`;
+  const red = `${parsed.suit}5r`;
+  const candidates = [Array.from({ length }, () => normal)];
+  candidates.push([red, ...Array.from({ length: length - 1 }, () => normal)]);
+  if (tile === red) return candidates.filter((candidate) => candidate.includes(red));
+  return candidates;
+}
+
+function sequenceCandidateTiles(selectedTile, suit, start) {
+  const normalized = normalizeTile(selectedTile);
+  const base = [`${suit}${start}`, `${suit}${start + 1}`, `${suit}${start + 2}`];
+  const candidates = [
+    base.map((item) => (item === normalized ? selectedTile : item)),
+  ];
+  const five = `${suit}5`;
+  if (base.includes(five)) {
+    candidates.push(base.map((item) => (item === five ? `${suit}5r` : item)));
+  }
+  return candidates;
+}
+
+function dedupeCandidates(candidates) {
+  const seen = new Set();
+  const result = [];
+  for (const candidate of candidates) {
+    const key = `${candidate.kind}:${candidate.tiles.join(",")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(candidate);
+  }
+  return result;
 }
 
 export function decodeShareState(value) {

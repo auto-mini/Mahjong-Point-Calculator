@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 
 import {
   calculate,
+  candidateMeldsFor,
   countDora,
   createStateFromMelds,
   nextDora,
   sanitizeRecentItems,
   validateTiles,
   validateState,
+  winningTileCandidates,
   encodeShareState,
   decodeShareState,
 } from "../src/domain.js";
@@ -45,6 +47,21 @@ test("red five counts as normal dora and red dora", () => {
 test("tile quantity validation catches five of a kind and duplicate red five", () => {
   assert.deepEqual(validateTiles(["m1", "m1", "m1", "m1", "m1"]), ["동일패 5장 이상: 1만이 5장입니다."]);
   assert.deepEqual(validateTiles(["m5r", "m5r"]), ["동일 수패 적5 2장 이상: 적5만이 2장입니다."]);
+});
+
+test("candidate melds include red-five variants when a 5 can appear", () => {
+  const candidates = candidateMeldsFor("m3").map((candidate) => `${candidate.kind}:${candidate.tiles.join(",")}`);
+  assert.equal(candidates.includes("sequence:m3,m4,m5"), true);
+  assert.equal(candidates.includes("sequence:m3,m4,m5r"), true);
+});
+
+test("winning tile candidates keep red five separate from normal five", () => {
+  const candidates = winningTileCandidates([
+    { tiles: ["m3", "m4", "m5r"] },
+    { tiles: ["m5", "m6", "m7"] },
+    { tiles: ["east", "east"] },
+  ]);
+  assert.deepEqual(candidates, ["m3", "m4", "m5r", "m5", "m6", "m7", "east"]);
 });
 
 test("state validation catches absent win tile and invalid ippatsu", () => {
