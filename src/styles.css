@@ -301,8 +301,8 @@ h1 {
 }
 
 .meld-box {
-  --tile-w: 24px;
-  --tile-h: 33px;
+  --tile-w: 25px;
+  --tile-h: 36px;
   width: fit-content;
   max-width: 100%;
 }
@@ -366,17 +366,28 @@ h1 {
   border-radius: 8px;
   padding: 2px;
   background: transparent;
+  color: var(--text);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  line-height: 1;
 }
 
 .tile-button.active {
   box-shadow: 0 0 0 2px var(--red);
 }
 
+.tile-caption {
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .tile-grid {
-  --tile-w: 20px;
-  --tile-h: 27px;
+  --tile-w: 24px;
+  --tile-h: 35px;
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .tile-grid-row {
@@ -392,7 +403,7 @@ h1 {
 }
 
 .tile-grid-row .tile-row {
-  gap: 1px;
+  gap: 2px;
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -457,16 +468,16 @@ h1 {
 }
 
 .win-candidates {
-  --tile-w: 26px;
-  --tile-h: 36px;
+  --tile-w: 30px;
+  --tile-h: 43px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
 .candidate-box {
-  --tile-w: 26px;
-  --tile-h: 36px;
+  --tile-w: 30px;
+  --tile-h: 43px;
 }
 
 .slot-row {
@@ -476,8 +487,8 @@ h1 {
 }
 
 .slot {
-  --tile-w: 26px;
-  --tile-h: 36px;
+  --tile-w: 30px;
+  --tile-h: 43px;
   min-height: 66px;
   border: 1px solid var(--line);
   border-radius: 10px;

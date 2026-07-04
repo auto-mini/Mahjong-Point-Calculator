@@ -332,7 +332,10 @@ function tileGrid(tiles, activeTile, onSelect) {
 }
 
 function tileButton(tile, onClick, active = false) {
-  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [tileFace(tile)]);
+  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [
+    tileFace(tile),
+    el("span", { className: "tile-caption", text: tileLabel(tile) }),
+  ]);
 }
 
 function tileFace(tile, selected = false) {
@@ -738,24 +741,26 @@ function tileImageSrc(tile) {
   if (TILE_IMAGE_CACHE.has(tile)) return TILE_IMAGE_CACHE.get(tile);
   const parts = tileImageParts(tile);
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="88" viewBox="0 0 64 88">
+    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="104" viewBox="0 0 72 104">
       <defs>
         <linearGradient id="face" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stop-color="#fffdf4"/>
-          <stop offset="1" stop-color="#efe5cf"/>
+          <stop offset="0" stop-color="#fffef7"/>
+          <stop offset="1" stop-color="#f3ead8"/>
         </linearGradient>
         <linearGradient id="side" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stop-color="#96c8b7"/>
-          <stop offset="1" stop-color="#518878"/>
+          <stop offset="0" stop-color="#90c9b7"/>
+          <stop offset=".62" stop-color="#6da998"/>
+          <stop offset="1" stop-color="#4f8978"/>
         </linearGradient>
         <filter id="shadow" x="-20%" y="-20%" width="145%" height="145%">
-          <feDropShadow dx="0" dy="2.4" stdDeviation="1.3" flood-color="#173d35" flood-opacity=".38"/>
+          <feDropShadow dx="3" dy="4" stdDeviation="1.1" flood-color="#7a806e" flood-opacity=".38"/>
         </filter>
       </defs>
-      <path d="M12 6h36c6 0 10 5 10 11v53c0 7-5 12-12 12H13c-4 0-7-3-7-7V13c0-4 2-7 6-7z" fill="url(#side)" filter="url(#shadow)"/>
-      <path d="M9 7h36c6 0 10 5 10 11v51c0 6-4 10-10 10H10c-4 0-7-3-7-7V14c0-4 2-7 6-7z" fill="url(#face)" stroke="#4f8175" stroke-width="1.6"/>
-      <path d="M13 13h29" stroke="#fffaf0" stroke-width="2.4" opacity=".95"/>
-      <rect x="11" y="14" width="34" height="55" rx="5" fill="#fffaf0" opacity=".42"/>
+      <path d="M14 7h40c6 0 10 5 10 11v64c0 7-5 12-12 12H14c-5 0-8-3-8-8V15c0-5 3-8 8-8z" fill="url(#side)" filter="url(#shadow)"/>
+      <path d="M9 5h41c6 0 10 5 10 11v63c0 7-5 12-12 12H10c-5 0-8-3-8-8V13c0-5 3-8 7-8z" fill="url(#face)" stroke="#4d8978" stroke-width="1.8"/>
+      <path d="M58 18v60c0 5-4 10-10 10h-35" fill="none" stroke="#367564" stroke-width="2.1" opacity=".72"/>
+      <rect x="12" y="13" width="39" height="68" rx="5.5" fill="#fffdf5" stroke="#d6d0bf" stroke-width="1.2"/>
+      <path d="M15 15h32" stroke="#ffffff" stroke-width="2.5" opacity=".85"/>
       ${tileMarkSvg(parts)}
     </svg>
   `.trim();
@@ -784,7 +789,8 @@ function tileImageParts(tile) {
 
 function tileMarkSvg(parts) {
   if (parts.type === "honor") {
-    return `<text x="29" y="52" text-anchor="middle" font-family="Wanted Sans, Arial, sans-serif" font-size="27" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
+    if (parts.label === "백") return "";
+    return `<text x="31" y="61" text-anchor="middle" font-family="serif" font-size="34" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
   }
   if (parts.suit === "m") return manMarkSvg(parts);
   if (parts.suit === "p") return pinMarkSvg(parts);
@@ -792,27 +798,35 @@ function tileMarkSvg(parts) {
 }
 
 function manMarkSvg(parts) {
-  const fill = parts.red ? "#b34239" : "#251f18";
+  const fill = parts.red ? "#e21d2b" : "#c43b37";
+  if (parts.red) {
+    return `
+      <text x="31" y="38" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">赤</text>
+      <text x="31" y="57" text-anchor="middle" font-family="serif" font-size="22" font-weight="900" fill="${fill}">五</text>
+      <text x="31" y="73" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">萬</text>
+    `;
+  }
+  const numerals = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
   return `
-    <text x="29" y="43" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="900" fill="${fill}">${parts.number}</text>
-    <text x="29" y="60" text-anchor="middle" font-family="Wanted Sans, Arial, sans-serif" font-size="13" font-weight="900" fill="${fill}">萬</text>
+    <text x="31" y="35" text-anchor="middle" font-family="serif" font-size="25" font-weight="900" fill="#111111">${numerals[parts.number]}</text>
+    <text x="31" y="66" text-anchor="middle" font-family="serif" font-size="29" font-weight="900" fill="${fill}">萬</text>
   `;
 }
 
 function pinMarkSvg(parts) {
-  const fill = parts.red ? "#b34239" : "#256f9c";
+  const fill = parts.red ? "#e21d2b" : "#11194f";
   return dotLayout(parts.number)
     .map(([x, y], index) => {
-      const dotFill = parts.red || index % 2 === 0 ? fill : "#251f18";
-      return `<circle cx="${29 + x}" cy="${42 + y}" r="4.2" fill="none" stroke="${dotFill}" stroke-width="2.1"/><circle cx="${29 + x}" cy="${42 + y}" r="1.35" fill="${dotFill}"/>`;
+      const dotFill = parts.red || index % 2 === 0 ? fill : "#d13b42";
+      return `<circle cx="${31 + x}" cy="${48 + y}" r="5.2" fill="#faf7ef" stroke="#111111" stroke-width="1.2"/><circle cx="${31 + x}" cy="${48 + y}" r="3.2" fill="none" stroke="${dotFill}" stroke-width="1.9"/><circle cx="${31 + x}" cy="${48 + y}" r="1.1" fill="${dotFill}"/>`;
     })
     .join("");
 }
 
 function souMarkSvg(parts) {
-  const fill = parts.red ? "#b34239" : "#257353";
+  const fill = parts.red ? "#e21d2b" : "#0a6a22";
   return dotLayout(parts.number)
-    .map(([x, y]) => `<rect x="${26 + x}" y="${35 + y}" width="6" height="14" rx="3" fill="${fill}"/><path d="M${29 + x} ${36 + y}v12" stroke="#fffaf0" stroke-width="1.2" opacity=".7"/>`)
+    .map(([x, y]) => `<rect x="${28 + x}" y="${39 + y}" width="6.5" height="17" rx="3.2" fill="${fill}" stroke="#034c18" stroke-width=".8"/><circle cx="${31.25 + x}" cy="${42 + y}" r="1.4" fill="#fffaf0" opacity=".85"/><circle cx="${31.25 + x}" cy="${53 + y}" r="1.4" fill="#fffaf0" opacity=".75"/>`)
     .join("");
 }
 
