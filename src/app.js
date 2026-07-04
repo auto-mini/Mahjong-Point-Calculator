@@ -294,7 +294,7 @@ function normalizeUiState(rawState) {
     next.lastKanClosed = null;
   }
   if (!next.situation.riichi && !next.situation.doubleRiichi) next.uraIndicators = [];
-  if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds).includes(next.winTile)) next.winTile = null;
+  if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds, { chankan: next.situation.chankan }).includes(next.winTile)) next.winTile = null;
   return next;
 }
 
@@ -420,7 +420,7 @@ function pageTwo() {
     complete
       ? panel("화료패", [
           !state.winTile ? el("p", { className: "panel-note win-note", text: WIN_TILE_REQUIRED_TEXT }) : null,
-          el("div", { className: "win-candidates" }, winningTileCandidates(state.melds).map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
+          el("div", { className: "win-candidates" }, currentWinningTileCandidates().map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
     !complete
@@ -613,7 +613,7 @@ function closedOnlyInput() {
 
 function removeMeld(index) {
   const melds = state.melds.filter((_, itemIndex) => itemIndex !== index);
-  const keepWinTile = isHandComplete(melds) && winningTileCandidates(melds).includes(state.winTile);
+  const keepWinTile = isHandComplete(melds) && winningTileCandidates(melds, { chankan: state.situation.chankan }).includes(state.winTile);
   setState({ melds, winTile: keepWinTile ? state.winTile : null });
 }
 
@@ -912,6 +912,9 @@ function handContextErrors() {
   if (isHandComplete() && state.situation.rinshan && !quads().length) {
     messages.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
   }
+  if (isHandComplete() && state.situation.chankan && !currentWinningTileCandidates().length) {
+    messages.push("창깡은 슌쯔를 완성하는 화료만 가능합니다.");
+  }
   return messages;
 }
 
@@ -986,6 +989,10 @@ function tileAssetSrc(tile) {
 
 function quads() {
   return state.melds.filter((meld) => meld.kind === "quad");
+}
+
+function currentWinningTileCandidates(melds = state.melds) {
+  return winningTileCandidates(melds, { chankan: state.situation.chankan });
 }
 
 function needsLastKanClosedQuestion() {

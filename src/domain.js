@@ -336,7 +336,7 @@ function winningContexts(shape, state) {
   if (shape.type !== "standard" || !state.winTile) return [{ wait: { fu: 0, wait: "unknown" }, ronCompletedMeld: null, key: "unknown" }];
   const tile = normalizeTile(state.winTile);
   const contexts = [];
-  if (shape.pair.tiles.map(normalizeTile).includes(tile)) {
+  if (!state.situation?.chankan && shape.pair.tiles.map(normalizeTile).includes(tile)) {
     contexts.push({ wait: { fu: 2, wait: "단기" }, ronCompletedMeld: null, key: "pair" });
   }
   shape.melds.forEach((meld, index) => {
@@ -346,7 +346,7 @@ function winningContexts(shape, state) {
     if (meld.kind === "sequence") {
       const wait = sequenceWaitFu(meld, state.winTile);
       if (wait) contexts.push({ wait, ronCompletedMeld: null, key: `sequence:${index}:${wait.wait}:${wait.fu}` });
-    } else if (meld.kind === "triplet") {
+    } else if (!state.situation?.chankan && meld.kind === "triplet") {
       contexts.push({
         wait: { fu: 0, wait: "샤보" },
         ronCompletedMeld: state.winMethod === "ron" ? meld : null,
@@ -354,6 +354,7 @@ function winningContexts(shape, state) {
       });
     }
   });
+  if (state.situation?.chankan) return contexts;
   return contexts.length ? contexts : [{ wait: { fu: 0, wait: "unknown" }, ronCompletedMeld: null, key: "unknown" }];
 }
 
@@ -771,7 +772,11 @@ export function validateState(state) {
   if (!state.melds?.length) errors.push("손패를 입력해주세요.");
   if (state.melds?.length && !state.winTile) errors.push("화료패를 선택해주세요.");
   const tiles = flattenMelds(state.melds || []);
-  if (state.winTile && !winningTileCandidates(state.melds || []).includes(state.winTile)) errors.push("화료패가 최종 손패에 없습니다.");
+  const winCandidates = winningTileCandidates(state.melds || [], { chankan: state.situation?.chankan });
+  if (state.situation?.chankan && state.melds?.length && !winCandidates.length) errors.push("창깡은 슌쯔를 완성하는 화료만 가능합니다.");
+  if (state.winTile && !winCandidates.includes(state.winTile)) {
+    errors.push(state.situation?.chankan ? "창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다." : "화료패가 최종 손패에 없습니다.");
+  }
   const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   pushUniqueErrors(errors, validateTiles(tiles));
   pushUniqueErrors(errors, validateTiles([
@@ -920,8 +925,15 @@ export function candidateMeldsFor(tile) {
   return dedupeCandidates(candidates);
 }
 
-export function winningTileCandidates(melds) {
-  return uniquePhysicalTiles(flattenMelds((melds || []).filter((meld) => !meld.open && meld.kind !== "quad")));
+export function winningTileCandidates(melds, { chankan = false } = {}) {
+  const eligible = [];
+  for (const raw of melds || []) {
+    const meld = raw.kind ? raw : createMeld(raw.tiles || [], raw.open);
+    if (meld.open || meld.kind === "quad") continue;
+    if (chankan && meld.kind !== "sequence") continue;
+    eligible.push(meld);
+  }
+  return uniquePhysicalTiles(flattenMelds(eligible));
 }
 
 export function encodeShareState(state) {

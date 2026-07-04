@@ -100,6 +100,16 @@ test("winning tile candidates exclude closed quads", () => {
   assert.deepEqual(candidates, ["p5"]);
 });
 
+test("chankan winning tile candidates are limited to closed sequences", () => {
+  const candidates = winningTileCandidates([
+    { tiles: ["m1", "m2", "m3"] },
+    { tiles: ["p2", "p2", "p2"] },
+    { tiles: ["s3", "s4", "s5"], open: true },
+    { tiles: ["east", "east"] },
+  ], { chankan: true });
+  assert.deepEqual(candidates, ["m1", "m2", "m3"]);
+});
+
 test("state validation catches absent win tile and invalid ippatsu", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
@@ -273,7 +283,7 @@ test("inactive ura indicators are ignored by tile quantity validation", () => {
   assert.equal(errors.length, 0);
 });
 
-test("chankan does not require a sequence wait", () => {
+test("chankan requires the winning tile to be in a closed sequence", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
     roundWind: "east",
@@ -289,7 +299,7 @@ test("chankan does not require a sequence wait", () => {
     winTile: "s3",
     doraIndicators: ["p9"],
   }));
-  assert.equal(errors.length, 0);
+  assert.equal(errors.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), true);
 });
 
 test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {
