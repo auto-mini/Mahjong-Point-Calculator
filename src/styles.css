@@ -53,10 +53,6 @@ button {
   margin-bottom: 18px;
 }
 
-.topbar.no-back {
-  grid-template-columns: 1fr 92px;
-}
-
 .back-button,
 .recent-button,
 .icon-button {
@@ -70,6 +66,11 @@ button {
 
 .back-button {
   width: 34px;
+}
+
+.back-spacer {
+  width: 34px;
+  min-height: 34px;
 }
 
 .recent-button {
@@ -279,27 +280,34 @@ h1 {
 }
 
 .meld-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .meld-box,
 .candidate-box {
   position: relative;
-  min-height: 58px;
   border: 1px solid var(--line-soft);
   border-radius: 10px;
   background: var(--control);
-  padding: 8px;
+  padding: 5px;
+}
+
+.meld-box {
+  --tile-w: 24px;
+  --tile-h: 33px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .meld-remove {
   position: absolute;
-  right: -7px;
-  top: -7px;
-  width: 22px;
-  height: 22px;
+  right: -6px;
+  top: -6px;
+  width: 20px;
+  height: 20px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--control);
@@ -308,30 +316,35 @@ h1 {
 }
 
 .meld-kind {
-  margin-top: 5px;
+  margin-top: 2px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 
 .tile-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
   align-items: center;
 }
 
+.meld-box .tile-row {
+  gap: 1px;
+  flex-wrap: nowrap;
+}
+
 .tile {
-  width: 30px;
-  height: 41px;
+  width: var(--tile-w, 30px);
+  height: var(--tile-h, 41px);
   display: grid;
   place-items: center;
   line-height: 0;
 }
 
 .tile-image {
-  width: 30px;
-  height: 41px;
+  width: var(--tile-w, 30px);
+  height: var(--tile-h, 41px);
   display: block;
   user-select: none;
   -webkit-user-drag: none;
@@ -356,19 +369,32 @@ h1 {
 }
 
 .tile-grid {
+  --tile-w: 20px;
+  --tile-h: 27px;
   display: grid;
-  gap: 9px;
+  gap: 7px;
 }
 
 .tile-grid-row {
   display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 8px;
+  grid-template-columns: 18px 1fr;
+  gap: 4px;
   align-items: center;
 }
 
+.tile-grid-row .label {
+  margin: 0;
+  font-size: 11px;
+}
+
 .tile-grid-row .tile-row {
-  gap: 5px;
+  gap: 1px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.tile-grid .tile-button {
+  padding: 2px;
 }
 
 .selected-tile-row {
@@ -431,9 +457,16 @@ h1 {
 }
 
 .win-candidates {
+  --tile-w: 26px;
+  --tile-h: 36px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
+}
+
+.candidate-box {
+  --tile-w: 26px;
+  --tile-h: 36px;
 }
 
 .slot-row {
@@ -443,6 +476,8 @@ h1 {
 }
 
 .slot {
+  --tile-w: 26px;
+  --tile-h: 36px;
   min-height: 66px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -453,6 +488,11 @@ h1 {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
+}
+
+.kan-extra,
+.kan-note {
+  margin-top: 12px;
 }
 
 .slot.active {

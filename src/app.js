@@ -34,22 +34,22 @@ render();
 function loadInitialState() {
   if (location.hash.startsWith("#s=")) {
     const decoded = decodeShareState(location.hash.slice(3));
-    if (decoded) return decoded;
+    if (decoded) return normalizeUiState(decoded);
     initialShareError = "공유 링크를 읽을 수 없음";
   }
-  return defaultState();
+  return normalizeUiState(defaultState());
 }
 
 function setState(next) {
   initialShareError = null;
-  state = createStateFromMelds({
+  state = normalizeUiState(createStateFromMelds({
     ...state,
     ...next,
     situation: {
       ...state.situation,
       ...(next.situation || {}),
     },
-  });
+  }));
   render();
 }
 
@@ -78,15 +78,14 @@ function render() {
 
 function nav() {
   const titles = ["화료/국 정보", "손패 입력", "도라/우라", "결과"];
-  const topbar = el("section", { className: `topbar ${step === 1 ? "no-back" : ""}` });
-  if (step > 1) topbar.append(el("button", { className: "back-button", text: "<", onClick: () => goBack() }));
+  const topbar = el("section", { className: "topbar" });
+  topbar.append(step > 1 ? el("button", { className: "back-button", text: "<", onClick: () => goBack() }) : el("span", { className: "back-spacer" }));
   const title = el("div", {}, [
     el("div", { className: "page-kicker", text: `${step}/4` }),
     el("h1", { text: titles[step - 1] }),
   ]);
   topbar.append(title);
-  if (step > 1) topbar.append(el("button", { className: "recent-button", text: "최근계산", onClick: () => openRecent() }));
-  else topbar.append(el("span"));
+  topbar.append(el("button", { className: "recent-button", text: "최근계산", onClick: () => openRecent() }));
   return topbar;
 }
 
@@ -161,6 +160,40 @@ function setWinMethod(method) {
   setState({ winMethod: state.winMethod === method ? null : method });
 }
 
+function normalizeUiState(rawState) {
+  const next = createStateFromMelds(rawState);
+  next.situation = normalizeSituationForUi(next.situation, next.winMethod, next.melds);
+  if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds).includes(next.winTile)) next.winTile = null;
+  return next;
+}
+
+function normalizeSituationForUi(situation, winMethod, melds = []) {
+  const next = { ...situation };
+  if (winMethod === "ron") {
+    next.rinshan = false;
+    next.haitei = false;
+  }
+  if (winMethod === "tsumo") {
+    next.chankan = false;
+    next.houtei = false;
+  }
+  if (melds.some((meld) => meld.open)) {
+    next.riichi = false;
+    next.doubleRiichi = false;
+    next.ippatsu = false;
+  }
+  if (next.riichi) next.doubleRiichi = false;
+  if (next.doubleRiichi) next.riichi = false;
+  if (!next.riichi && !next.doubleRiichi) next.ippatsu = false;
+  if (next.haitei) next.houtei = false;
+  if (next.houtei) next.haitei = false;
+  if (next.chankan) next.rinshan = false;
+  if (next.rinshan) next.chankan = false;
+  if (!Object.entries(next).some(([keyName, value]) => keyName !== "none" && value)) next.none = true;
+  else next.none = false;
+  return next;
+}
+
 function windSection(label, key) {
   const options = [
     ["east", "동"],
@@ -228,9 +261,10 @@ function toggleSituation(key) {
 function pageTwo() {
   const complete = isHandComplete();
   const errors = visibleHandErrors();
+  const winHighlight = { used: false };
   return el("div", {}, [
     panel("현재 손패", null, [
-      state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index))) : el("p", { className: "panel-note", text: "아직 입력된 세트가 없습니다." }),
+      state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index, winHighlight))) : el("p", { className: "panel-note", text: "아직 입력된 세트가 없습니다." }),
       el("p", { className: "panel-note", text: `현재 ${flattenMelds(state.melds).length}장 / ${complete ? "완성 후보 있음" : "미완성"}` }),
     ]),
     complete
@@ -262,20 +296,20 @@ function pageTwo() {
   ]);
 }
 
-function meldBox(meld, index) {
+function meldBox(meld, index, winHighlight) {
   return el("div", { className: "meld-box" }, [
     el("button", { className: "meld-remove", text: "x", onClick: () => removeMeld(index), ariaLabel: "세트 삭제" }),
-    tileRow(meld.tiles, state.winTile),
+    tileRow(meld.tiles, state.winTile, winHighlight),
     el("div", { className: "meld-kind", text: `${kindLabel(meld.kind)}${meld.open ? " / 후로" : ""}` }),
   ]);
 }
 
 function tileGrid(tiles, activeTile, onSelect) {
   const groups = [
-    ["만", tiles.filter((tile) => tile.startsWith("m"))],
-    ["통", tiles.filter((tile) => tile.startsWith("p"))],
-    ["삭", tiles.filter((tile) => tile.startsWith("s"))],
-    ["자", tiles.filter((tile) => !/^[mps]/.test(tile))],
+    ["만", orderedSuitTiles(tiles, "m")],
+    ["통", orderedSuitTiles(tiles, "p")],
+    ["삭", orderedSuitTiles(tiles, "s")],
+    ["자", tiles.filter((tile) => !isNumberTileId(tile))],
   ];
   return el(
     "div",
@@ -290,7 +324,7 @@ function tileGrid(tiles, activeTile, onSelect) {
 }
 
 function tileButton(tile, onClick, active = false) {
-  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [tileFace(tile, active)]);
+  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [tileFace(tile)]);
 }
 
 function tileFace(tile, selected = false) {
@@ -306,8 +340,28 @@ function tileFace(tile, selected = false) {
   ]);
 }
 
-function tileRow(tiles, selectedTileForHighlight = null) {
-  return el("div", { className: "tile-row" }, tiles.map((tile) => tileFace(tile, selectedTileForHighlight === tile)));
+function tileRow(tiles, selectedTileForHighlight = null, highlightTracker = null) {
+  return el("div", { className: "tile-row" }, tiles.map((tile) => {
+    const selected = shouldHighlightTile(tile, selectedTileForHighlight, highlightTracker);
+    return tileFace(tile, selected);
+  }));
+}
+
+function shouldHighlightTile(tile, selectedTileForHighlight, highlightTracker) {
+  if (!selectedTileForHighlight || tile !== selectedTileForHighlight) return false;
+  if (!highlightTracker) return true;
+  if (highlightTracker.used) return false;
+  highlightTracker.used = true;
+  return true;
+}
+
+function orderedSuitTiles(tiles, suit) {
+  const wanted = ["1", "2", "3", "4", "5", "5r", "6", "7", "8", "9"].map((value) => `${suit}${value}`);
+  return wanted.filter((tile) => tiles.includes(tile));
+}
+
+function isNumberTileId(tile) {
+  return /^(?:[mps][1-9]|[mps]5r)$/.test(tile);
 }
 
 function candidatePanel() {
@@ -389,7 +443,8 @@ function addCandidate(candidate, open) {
 
 function removeMeld(index) {
   const melds = state.melds.filter((_, itemIndex) => itemIndex !== index);
-  setState({ melds, winTile: winningTileCandidates(melds).includes(state.winTile) ? state.winTile : null });
+  const keepWinTile = isHandComplete(melds) && winningTileCandidates(melds).includes(state.winTile);
+  setState({ melds, winTile: keepWinTile ? state.winTile : null });
 }
 
 function resetHand() {
@@ -411,7 +466,7 @@ function pageThree() {
         button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
       ]),
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
-      kanText ? el("div", { className: kanText.recognized ? "ok-note" : "alert", text: kanText.text }) : null,
+      kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text }) : null,
     ]),
     indicatorPanel("도라 표시패", null, "doraIndicators", false),
     indicatorPanel("우라도라 표시패", null, "uraIndicators", !needsUra),
@@ -568,11 +623,11 @@ function canStepOneContinue() {
   return Boolean(state.winMethod);
 }
 
-function isHandComplete() {
-  const tiles = flattenMelds(state.melds);
-  const quads = state.melds.filter((meld) => meld.kind === "quad").length;
+function isHandComplete(melds = state.melds) {
+  const tiles = flattenMelds(melds);
+  const quads = melds.filter((meld) => meld.kind === "quad").length;
   const plausibleCount = tiles.length === 14 + quads;
-  return plausibleCount && decomposeHand(state.melds).length > 0;
+  return plausibleCount && decomposeHand(melds).length > 0;
 }
 
 function canStepTwoContinue() {
@@ -636,7 +691,7 @@ function hasMiddleGap(values) {
 }
 
 function resetAll() {
-  state = defaultState();
+  state = normalizeUiState(defaultState());
   step = 1;
   selectedTile = null;
   selectedCandidate = null;
@@ -656,20 +711,26 @@ function shortTile(tile) {
 function tileImageSrc(tile) {
   if (TILE_IMAGE_CACHE.has(tile)) return TILE_IMAGE_CACHE.get(tile);
   const parts = tileImageParts(tile);
-  const red = tile.endsWith("5r");
-  const mainFill = red ? "#b34239" : "#251f18";
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="76" viewBox="0 0 56 76">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="88" viewBox="0 0 64 88">
       <defs>
-        <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="1.1" flood-color="#17483f" flood-opacity=".45"/>
+        <linearGradient id="face" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#fffdf4"/>
+          <stop offset="1" stop-color="#efe5cf"/>
+        </linearGradient>
+        <linearGradient id="side" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#96c8b7"/>
+          <stop offset="1" stop-color="#518878"/>
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="145%" height="145%">
+          <feDropShadow dx="0" dy="2.4" stdDeviation="1.3" flood-color="#173d35" flood-opacity=".38"/>
         </filter>
       </defs>
-      <rect x="5" y="4" width="42" height="64" rx="8" fill="#fbf8ec" stroke="#5f8d82" stroke-width="2" filter="url(#s)"/>
-      <path d="M44 8c4 2 6 5 6 10v40c0 5-3 9-7 10V8z" fill="#74a99a"/>
-      <path d="M10 10h30" stroke="#fffef7" stroke-width="2" opacity=".9"/>
-      <text x="25" y="${parts.sub ? 35 : 43}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${parts.main.length > 1 ? 19 : 24}" font-weight="800" fill="${mainFill}">${escapeSvg(parts.main)}</text>
-      ${parts.sub ? `<text x="25" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="${mainFill}">${escapeSvg(parts.sub)}</text>` : ""}
+      <path d="M12 6h36c6 0 10 5 10 11v53c0 7-5 12-12 12H13c-4 0-7-3-7-7V13c0-4 2-7 6-7z" fill="url(#side)" filter="url(#shadow)"/>
+      <path d="M9 7h36c6 0 10 5 10 11v51c0 6-4 10-10 10H10c-4 0-7-3-7-7V14c0-4 2-7 6-7z" fill="url(#face)" stroke="#4f8175" stroke-width="1.6"/>
+      <path d="M13 13h29" stroke="#fffaf0" stroke-width="2.4" opacity=".95"/>
+      <rect x="11" y="14" width="34" height="55" rx="5" fill="#fffaf0" opacity=".42"/>
+      ${tileMarkSvg(parts)}
     </svg>
   `.trim();
   const uri = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
@@ -682,11 +743,65 @@ function tileImageParts(tile) {
   const match = /^([mps])([1-9])$/.exec(normalized);
   if (match) {
     return {
-      main: tile.endsWith("5r") ? "赤5" : match[2],
-      sub: { m: "만", p: "통", s: "삭" }[match[1]],
+      type: "suit",
+      suit: match[1],
+      number: Number(match[2]),
+      red: tile.endsWith("5r"),
     };
   }
-  return { main: tileLabel(tile), sub: "" };
+  return {
+    type: "honor",
+    label: tileLabel(tile),
+    color: tile === "red" ? "#b34239" : tile === "green" ? "#257353" : "#251f18",
+  };
+}
+
+function tileMarkSvg(parts) {
+  if (parts.type === "honor") {
+    return `<text x="29" y="52" text-anchor="middle" font-family="Wanted Sans, Arial, sans-serif" font-size="27" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
+  }
+  if (parts.suit === "m") return manMarkSvg(parts);
+  if (parts.suit === "p") return pinMarkSvg(parts);
+  return souMarkSvg(parts);
+}
+
+function manMarkSvg(parts) {
+  const fill = parts.red ? "#b34239" : "#251f18";
+  return `
+    <text x="29" y="43" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="900" fill="${fill}">${parts.number}</text>
+    <text x="29" y="60" text-anchor="middle" font-family="Wanted Sans, Arial, sans-serif" font-size="13" font-weight="900" fill="${fill}">萬</text>
+  `;
+}
+
+function pinMarkSvg(parts) {
+  const fill = parts.red ? "#b34239" : "#256f9c";
+  return dotLayout(parts.number)
+    .map(([x, y], index) => {
+      const dotFill = parts.red || index % 2 === 0 ? fill : "#251f18";
+      return `<circle cx="${29 + x}" cy="${42 + y}" r="4.2" fill="none" stroke="${dotFill}" stroke-width="2.1"/><circle cx="${29 + x}" cy="${42 + y}" r="1.35" fill="${dotFill}"/>`;
+    })
+    .join("");
+}
+
+function souMarkSvg(parts) {
+  const fill = parts.red ? "#b34239" : "#257353";
+  return dotLayout(parts.number)
+    .map(([x, y]) => `<rect x="${26 + x}" y="${35 + y}" width="6" height="14" rx="3" fill="${fill}"/><path d="M${29 + x} ${36 + y}v12" stroke="#fffaf0" stroke-width="1.2" opacity=".7"/>`)
+    .join("");
+}
+
+function dotLayout(number) {
+  return {
+    1: [[0, 0]],
+    2: [[-7, -8], [7, 8]],
+    3: [[-8, -10], [0, 0], [8, 10]],
+    4: [[-8, -11], [8, -11], [-8, 11], [8, 11]],
+    5: [[-9, -12], [9, -12], [0, 0], [-9, 12], [9, 12]],
+    6: [[-9, -14], [9, -14], [-9, 0], [9, 0], [-9, 14], [9, 14]],
+    7: [[-9, -15], [9, -15], [-9, -3], [9, -3], [0, 8], [-9, 17], [9, 17]],
+    8: [[-9, -17], [9, -17], [-9, -6], [9, -6], [-9, 6], [9, 6], [-9, 17], [9, 17]],
+    9: [[-10, -17], [0, -17], [10, -17], [-10, 0], [0, 0], [10, 0], [-10, 17], [0, 17], [10, 17]],
+  }[number];
 }
 
 function escapeSvg(value) {
