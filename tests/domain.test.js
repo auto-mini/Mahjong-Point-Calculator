@@ -104,10 +104,11 @@ test("chankan winning tile candidates are limited to closed sequences", () => {
   const candidates = winningTileCandidates([
     { tiles: ["m1", "m2", "m3"] },
     { tiles: ["p2", "p2", "p2"] },
+    { tiles: ["p4", "p5", "p6"] },
     { tiles: ["s3", "s4", "s5"], open: true },
     { tiles: ["east", "east"] },
   ], { chankan: true });
-  assert.deepEqual(candidates, ["m1", "m2", "m3"]);
+  assert.deepEqual(candidates, ["m1", "m2", "m3", "p4", "p5", "p6"]);
 });
 
 test("state validation catches absent win tile and invalid ippatsu", () => {
@@ -140,6 +141,25 @@ test("dora and ura indicators participate in visible tile quantity validation", 
     doraIndicators: ["m1"],
   }));
   assert.equal(errors.includes("동일패 5장 이상: 1만이 5장입니다."), true);
+});
+
+test("five indicators do not count as definitely normal fives", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: false,
+    melds: [
+      { tiles: ["m5", "m5", "m5"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["m5"],
+  }));
+  assert.equal(errors.includes("동일 수패 일반5 4장 이상: 5만이 4장입니다."), false);
 });
 
 test("own kan dora requires a second dora indicator", () => {
@@ -181,6 +201,21 @@ test("ron after another player's kan still requires the added dora indicator", (
     doraIndicators: ["east"],
   }));
   assert.equal(errors.includes("도라 표시패를 2개 이상 입력해주세요."), true);
+});
+
+test("ippatsu is rejected after a non-chankan kan", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east", "south"],
+    uraIndicators: ["east", "south"],
+  }));
+  assert.equal(errors.includes("깡 직후 화료에서는 일발을 선택할 수 없습니다."), true);
 });
 
 test("rinshan requires a hand quad and last kan type", () => {
@@ -302,6 +337,29 @@ test("chankan requires the winning tile to be in a closed sequence", () => {
   assert.equal(errors.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), true);
 });
 
+test("chankan candidates come from automatic decomposition, not input grouping", () => {
+  const melds = [
+    { tiles: ["m1", "m1", "m1"] },
+    { tiles: ["m2", "m2", "m2"] },
+    { tiles: ["m3", "m3", "m3"] },
+    { tiles: ["p4", "p5", "p6"] },
+    { tiles: ["p8", "p8"] },
+  ];
+  const candidates = winningTileCandidates(melds, { chankan: true });
+  assert.deepEqual(candidates, ["m1", "m2", "m3", "p4", "p5", "p6"]);
+
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    melds,
+    winTile: "m2",
+    doraIndicators: ["p9"],
+  }));
+  assert.equal(errors.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), false);
+});
+
 test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {
   const result = calc({
     winMethod: "ron",
@@ -397,6 +455,55 @@ test("pinfu tsumo is 20 fu and includes menzen tsumo", () => {
   assert.equal(result.fu, 20);
   assert.equal(result.yaku.some((item) => item.name === "멘젠쯔모"), true);
   assert.equal(result.yaku.some((item) => item.name === "핑후"), true);
+});
+
+test("child pinfu tsumo displays split payment and total", () => {
+  const result = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 2);
+  assert.equal(result.fu, 20);
+  assert.equal(result.score.display, "400/700");
+  assert.equal(result.score.total, 1500);
+});
+
+test("dealer pinfu tsumo displays all payment and total", () => {
+  const result = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "east",
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["south"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 2);
+  assert.equal(result.fu, 20);
+  assert.equal(result.score.display, "700 all");
+  assert.equal(result.score.total, 2100);
+});
+
+test("honba is added to ron payment and total", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    honba: 2,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 1);
+  assert.equal(result.fu, 30);
+  assert.equal(result.score.display, "1600점");
+  assert.equal(result.score.total, 1600);
 });
 
 test("ron shanpon does not count the completed triplet toward sanankou", () => {
@@ -828,6 +935,11 @@ test("share state parser rejects oversized payloads", () => {
   assert.equal(decodeShareState(`2~${"A".repeat(5000)}`), null);
 });
 
+test("compact share state parser rejects malformed payloads", () => {
+  assert.equal(decodeShareState("2~0000"), null);
+  assert.equal(decodeShareState("2~0000~~~~~~extra"), null);
+});
+
 test("recent item sanitizer keeps only restorable valid calculations", () => {
   const goodState = createStateFromMelds({
     winMethod: "ron",
@@ -846,4 +958,23 @@ test("recent item sanitizer keeps only restorable valid calculations", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].label, "ok");
   assert.equal(items[0].state.winTile, "s8");
+});
+
+test("recent item sanitizer filters invalid entries before limiting to 20", () => {
+  const goodState = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: false,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  const invalid = Array.from({ length: 25 }, (_, index) => ({ label: `bad-${index}`, state: { winMethod: "ron" } }));
+  const items = sanitizeRecentItems([
+    ...invalid,
+    { label: "ok", at: "2026-07-04T00:00:00.000Z", state: goodState },
+  ]);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].label, "ok");
 });

@@ -108,6 +108,15 @@ export function validateTiles(tiles) {
   return errors;
 }
 
+export function validateVisibleTiles(tiles) {
+  const errors = [];
+  const normalizedCounts = countTiles(tiles);
+  for (const [tile, count] of normalizedCounts) {
+    if (count > 4) errors.push(`동일패 5장 이상: ${tileLabel(tile)}이 ${count}장입니다.`);
+  }
+  return errors;
+}
+
 export function nextDora(indicator) {
   const tile = normalizeTile(indicator);
   const parsed = parseSuit(tile);
@@ -779,7 +788,7 @@ export function validateState(state) {
   }
   const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   pushUniqueErrors(errors, validateTiles(tiles));
-  pushUniqueErrors(errors, validateTiles([
+  pushUniqueErrors(errors, validateVisibleTiles([
     ...tiles,
     ...(state.doraIndicators || []).filter(Boolean),
     ...(needsUra ? (state.uraIndicators || []).filter(Boolean) : []),
@@ -806,6 +815,7 @@ export function validateState(state) {
   if (state.situation?.chankan && state.situation?.houtei) errors.push("창깡과 하저로어는 동시에 선택할 수 없습니다.");
   if (state.situation?.rinshan && state.situation?.ippatsu) errors.push("영상개화와 일발은 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && state.situation?.doubleRiichi) errors.push("창깡과 더블리치는 동시에 선택할 수 없습니다.");
+  if (state.situation?.ippatsu && state.lastKanWin === true && !state.situation?.chankan) errors.push("깡 직후 화료에서는 일발을 선택할 수 없습니다.");
   if (state.winMethod === "ron" && (state.situation?.haitei || state.situation?.rinshan)) errors.push("해저로월/영상개화는 쯔모 전용입니다.");
   if (state.winMethod === "tsumo" && (state.situation?.houtei || state.situation?.chankan)) errors.push("하저로어/창깡은 론 전용입니다.");
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
@@ -926,11 +936,23 @@ export function candidateMeldsFor(tile) {
 }
 
 export function winningTileCandidates(melds, { chankan = false } = {}) {
+  if (chankan) {
+    const sequenceTiles = new Set();
+    for (const shape of decomposeHand(melds || [])) {
+      if (shape.type !== "standard") continue;
+      for (const meld of shape.melds) {
+        if (meld.open || meld.kind !== "sequence") continue;
+        for (const tile of meld.tiles) sequenceTiles.add(normalizeTile(tile));
+      }
+    }
+    if (!sequenceTiles.size) return [];
+    return uniquePhysicalTiles(flattenMelds((melds || []).map((raw) => raw.kind ? raw : createMeld(raw.tiles || [], raw.open)).filter((meld) => !meld.open && meld.kind !== "quad")))
+      .filter((tile) => sequenceTiles.has(normalizeTile(tile)));
+  }
   const eligible = [];
   for (const raw of melds || []) {
     const meld = raw.kind ? raw : createMeld(raw.tiles || [], raw.open);
     if (meld.open || meld.kind === "quad") continue;
-    if (chankan && meld.kind !== "sequence") continue;
     eligible.push(meld);
   }
   return uniquePhysicalTiles(flattenMelds(eligible));
@@ -1084,11 +1106,13 @@ export function decodeShareState(value) {
 
 function decodeCompactShareState(value) {
   try {
-    const [head = "", situation = "0", melds = "", winTile = SHARE_NULL, kan = "", dora = "", ura = ""] = value
+    const parts = value
       .slice(SHARE_VERSION_PREFIX.length)
       .split(SHARE_FIELD_SEPARATOR);
+    if (parts.length !== 7) throw new Error("Invalid compact share state");
+    const [head = "", situation = "0", melds = "", winTile = SHARE_NULL, kan = "", dora = "", ura = ""] = parts;
     if (head.length < 4) throw new Error("Invalid compact share state");
-    return sanitizeStatePayload({
+    const state = sanitizeStatePayload({
       winMethod: decodeWinMethod(head[0]),
       roundWind: decodeWind(head[1]),
       seatWind: decodeWind(head[2]),
@@ -1101,6 +1125,8 @@ function decodeCompactShareState(value) {
       doraIndicators: decodeIndicators(dora),
       uraIndicators: decodeIndicators(ura),
     });
+    if (encodeCompactShareState(state) !== value) throw new Error("Non-canonical compact share state");
+    return state;
   } catch {
     return null;
   }
@@ -1121,7 +1147,7 @@ function decodeLegacyShareState(value) {
 
 export function sanitizeRecentItems(value) {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, 20).flatMap((item) => {
+  return value.flatMap((item) => {
     if (!item || typeof item.label !== "string" || !item.state) return [];
     const state = sanitizeStatePayload(item.state);
     const result = calculate(state);
@@ -1131,5 +1157,5 @@ export function sanitizeRecentItems(value) {
       label: item.label.slice(0, 140),
       state,
     }];
-  });
+  }).slice(0, 20);
 }

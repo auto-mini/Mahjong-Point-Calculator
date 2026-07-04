@@ -12,6 +12,7 @@
   flattenMelds,
   sanitizeRecentItems,
   tileLabel,
+  validateVisibleTiles,
   winningTileCandidates,
 } from "./domain.js";
 
@@ -160,6 +161,9 @@ function el(tag, options = {}, children = []) {
   if (options.ariaLabel) node.setAttribute("aria-label", options.ariaLabel);
   if (options.ariaPressed !== undefined) node.setAttribute("aria-pressed", String(options.ariaPressed));
   if (options.title) node.title = options.title;
+  if (options.value !== undefined) node.value = options.value;
+  if (options.readOnly) node.readOnly = true;
+  if (options.onKeydown) node.addEventListener("keydown", options.onKeydown);
   if (tag === "button") attachTapFeedback(node, options.onClick, options.instantClick);
   else if (options.onClick) node.addEventListener("click", options.onClick);
   for (const [name, value] of Object.entries(options.attrs || {})) node.setAttribute(name, value);
@@ -218,7 +222,11 @@ function attachTapFeedback(node, onClick, instantClick = false) {
 function render() {
   latestResult = calculate(state);
   app.replaceChildren(nav(), page());
-  document.body.append(...renderModal());
+  const modalNodes = renderModal();
+  app.inert = modalNodes.length > 0;
+  if (modalNodes.length) app.setAttribute("aria-hidden", "true");
+  else app.removeAttribute("aria-hidden");
+  document.body.append(...modalNodes);
   focusModal();
 }
 
@@ -446,7 +454,7 @@ function pageTwo() {
 
 function meldBox(meld, index, winHighlight) {
   return el("div", { className: "meld-box" }, [
-    el("button", { className: "meld-remove", text: "×", onClick: () => removeMeld(index), ariaLabel: "세트 삭제" }),
+    el("button", { className: "meld-remove", text: "×", onClick: () => removeMeld(index, meldStateKey(meld)), ariaLabel: `${index + 1}번째 ${kindLabel(meld.kind)} 삭제` }),
     tileRow(meld.tiles, state.winTile, winHighlight),
     el("div", { className: "meld-kind", text: `${kindLabel(meld.kind)}${meld.open ? " / 후로" : ""}` }),
   ]);
@@ -472,7 +480,7 @@ function tileGrid(tiles, activeTile, onSelect) {
 }
 
 function tileButton(tile, onClick, active = false) {
-  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [
+  return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile), ariaPressed: active }, [
     tileFace(tile, active),
     el("span", { className: "tile-caption", text: compactTileLabel(tile) }),
   ]);
@@ -526,15 +534,16 @@ function isNumberTileId(tile) {
 function candidatePanel() {
   const candidates = viableCandidatesForSelectedTile();
   const groups = groupCandidates(candidates);
+  const activeCandidate = selectedCandidate;
   return panel("후보군", [
-    selectedCandidate
+    activeCandidate
       ? el("div", { className: "selected-candidate" }, [
-          candidateBox(selectedCandidate),
+          candidateBox(activeCandidate),
           el("div", { className: "candidate-controls" }, [
             el("span", { className: "label", text: "후로여부" }),
             el("div", { className: "candidate-action-row" }, [
-              el("button", { className: "candidate-action", text: "O", ariaLabel: "후로로 등록", onClick: () => addCandidate(selectedCandidate, true) }),
-              el("button", { className: "candidate-action", text: "X", ariaLabel: "멘젠으로 등록", onClick: () => addCandidate(selectedCandidate, false) }),
+              el("button", { className: "candidate-action", text: "O", ariaLabel: "후로로 등록", onClick: () => addCandidate(activeCandidate, true) }),
+              el("button", { className: "candidate-action", text: "X", ariaLabel: "멘젠으로 등록", onClick: () => addCandidate(activeCandidate, false) }),
             ]),
           ]),
         ])
@@ -600,8 +609,10 @@ function candidateKey(candidate) {
 }
 
 function addCandidate(candidate, open) {
+  if (!candidate || candidateWouldBreakTileCounts(candidate, flattenMelds(state.melds))) return;
   if (state.melds.length >= 7) return;
   const meld = createMeld(candidate.tiles, open);
+  if (meld.kind === "unknown") return;
   selectedTile = null;
   selectedCandidate = null;
   setState({ melds: [...state.melds, meld] });
@@ -611,10 +622,15 @@ function closedOnlyInput() {
   return state.situation.riichi || state.situation.doubleRiichi || state.situation.ippatsu;
 }
 
-function removeMeld(index) {
+function removeMeld(index, expectedKey = null) {
+  if (expectedKey && meldStateKey(state.melds[index]) !== expectedKey) return;
   const melds = state.melds.filter((_, itemIndex) => itemIndex !== index);
   const keepWinTile = isHandComplete(melds) && winningTileCandidates(melds, { chankan: state.situation.chankan }).includes(state.winTile);
   setState({ melds, winTile: keepWinTile ? state.winTile : null });
+}
+
+function meldStateKey(meld) {
+  return meld ? `${meld.open ? "o" : "c"}:${meld.kind}:${meld.tiles.join(",")}` : "";
 }
 
 function resetHand() {
@@ -754,7 +770,7 @@ function resultView(result) {
       el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => pairRow("result-line", item.name, `${item.han}판`))),
       result.alternatives.length ? el("button", { className: "secondary-action", text: "동점 해석 보기", onClick: () => openAlternatives(result.alternatives) }) : null,
     ]),
-    panel("부수 breakdown", [
+    panel("부수 계산", [
       result.han >= 5
         ? el("p", { className: "muted", text: "부수 무관" })
         : el("div", { className: "result-lines" }, fuBreakdownRows(result)),
@@ -857,6 +873,9 @@ function goBack() {
 }
 
 function goNext() {
+  if (step === 1 && !canStepOneContinue()) return;
+  if (step === 2 && !canStepTwoContinue()) return;
+  if (step === 3 && !canStepThreeContinue()) return;
   if (step === 2) selectedTile = null;
   if (step === 3 && latestResult?.ok) saveRecent(latestResult, false);
   step = Math.min(4, step + 1);
@@ -935,6 +954,7 @@ function doraValidationErrors() {
   const messages = [];
   if (shouldAskLastKanWinQuestion() && state.lastKanWin === null) messages.push("마지막 깡 직후 질문에 응답해주세요.");
   if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation.rinshan) messages.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
+  if (state.situation.ippatsu && state.lastKanWin === true && !state.situation.chankan) messages.push("깡 직후 화료에서는 일발을 선택할 수 없습니다.");
   if (needsLastKanClosedQuestion()) messages.push("쯔모 직전 깡 종류를 선택해주세요.");
   const dora = normalizedSlots(state.doraIndicators);
   const doraCount = leadingCount(dora);
@@ -949,6 +969,11 @@ function doraValidationErrors() {
     if (hasMiddleGap(ura)) messages.push("우라도라 중간 칸이 비어 있습니다.");
     if (leadingCount(ura) !== leadingCount(dora)) messages.push("우라도라 개수가 도라 표시패 개수와 다릅니다.");
   }
+  messages.push(...validateVisibleTiles([
+    ...flattenMelds(state.melds),
+    ...dora.filter(Boolean),
+    ...((state.situation.riichi || state.situation.doubleRiichi) ? normalizedSlots(state.uraIndicators).filter(Boolean) : []),
+  ]));
   return messages;
 }
 
@@ -1115,14 +1140,17 @@ function openAlternatives(alternatives) {
 }
 
 async function shareCurrentState() {
-  const url = `${location.origin}${location.pathname}#s=${encodeShareState(state)}`;
-  location.hash = `s=${encodeShareState(state)}`;
+  const encoded = encodeShareState(state);
+  const url = `${location.origin}${location.pathname}#s=${encoded}`;
+  history.replaceState(null, "", `${location.pathname}#s=${encoded}`);
+  let copied = false;
   try {
     await navigator.clipboard?.writeText(url);
+    copied = true;
   } catch {
     // Clipboard is optional; the visible URL box remains the fallback.
   }
-  modal = { type: "share", url };
+  modal = { type: "share", url, copied };
   render();
 }
 
@@ -1174,7 +1202,7 @@ function renderModal() {
         el("h2", { text: "복원 실패" }),
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
-      el("p", { className: "panel-note", text: "localStorage 기록 복원 실패. 저장된 입력값을 다시 검증하는 중 오류가 발생했습니다." }),
+      el("p", { className: "panel-note", text: "저장된 최근계산을 복원하지 못했습니다." }),
     ];
   } else {
     body = [
@@ -1182,12 +1210,18 @@ function renderModal() {
         el("h2", { text: "공유 링크" }),
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
-      el("div", { className: "copy-box", text: modal.url }),
+      el("p", { className: "panel-note", text: modal.copied ? "클립보드에 복사했습니다." : "자동 복사가 되지 않으면 아래 링크를 직접 복사하세요." }),
+      el("textarea", { className: "copy-box", value: modal.url, readOnly: true, ariaLabel: "공유 링크" }),
     ];
   }
   return [
     el("section", { className: "modal-backdrop", onClick: close }, [
-      el("div", { className: "sheet", onClick: (event) => event.stopPropagation(), attrs: { role: "dialog", "aria-modal": "true", "aria-label": modalLabel() } }, body),
+      el("div", {
+        className: "sheet",
+        onClick: (event) => event.stopPropagation(),
+        onKeydown: (event) => trapModalFocus(event, close),
+        attrs: { role: "dialog", "aria-modal": "true", "aria-label": modalLabel(), tabindex: "-1" },
+      }, body),
     ]),
   ];
 }
@@ -1203,8 +1237,40 @@ function modalLabel() {
 function focusModal() {
   if (!modal) return;
   requestAnimationFrame(() => {
-    document.querySelector(".sheet button")?.focus();
+    const sheet = document.querySelector(".sheet");
+    const [first] = focusableModalElements(sheet);
+    (first || sheet)?.focus();
   });
+}
+
+function trapModalFocus(event, close) {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    close();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = focusableModalElements(event.currentTarget);
+  if (!focusable.length) {
+    event.preventDefault();
+    event.currentTarget.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function focusableModalElements(root) {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll("button, textarea, input, select, a[href], [tabindex]:not([tabindex='-1'])"))
+    .filter((node) => !node.disabled && node.getAttribute("aria-hidden") !== "true");
 }
 
 function restoreRecent(item) {
@@ -1214,6 +1280,7 @@ function restoreRecent(item) {
     render();
     return;
   }
+  initialShareError = null;
   state = normalizeUiState(safeItem.state);
   step = 4;
   modal = null;

@@ -16,6 +16,14 @@
   --shadow: rgba(63, 38, 18, 0.16);
 }
 
+@font-face {
+  font-family: "Wanted Sans";
+  src: url("../assets/fonts/wanted-sans/WantedSansVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -243,8 +251,8 @@ h1 {
 }
 
 .panel:has(.tile-grid) {
-  padding-left: 18px;
-  padding-right: 18px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .panel-note {
@@ -534,30 +542,30 @@ h1 {
 }
 
 .tile-grid {
-  --tile-w: clamp(23px, 6.7vw, 27px);
+  --tile-w: clamp(23px, 7.35vw, 28px);
   --tile-h: calc(var(--tile-w) * 1.326);
   display: grid;
-  gap: 8px;
-  margin-left: -9px;
-  margin-right: -9px;
+  gap: 7px;
+  margin-left: -5px;
+  margin-right: -5px;
 }
 
 .tile-grid-row {
   display: grid;
-  grid-template-columns: 12px minmax(0, 1fr);
-  gap: 2px;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 1px;
   align-items: center;
 }
 
 .tile-grid-row .label {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .tile-grid-row .tile-row {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 1px;
+  gap: 0;
   min-width: 0;
 }
 
@@ -846,6 +854,9 @@ h1 {
 }
 
 .copy-box {
+  display: block;
+  width: 100%;
+  min-height: 84px;
   word-break: break-all;
   border: 1px solid var(--line-soft);
   background: var(--control);
@@ -853,6 +864,8 @@ h1 {
   padding: 10px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 @media (min-width: 700px) {
