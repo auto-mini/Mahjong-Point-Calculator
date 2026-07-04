@@ -1,5 +1,6 @@
 work/__pycache__/
 work/*.png
+dist/
 
 # Downloaded reference/font/tile source trees used during exploration.
 work/gmarket-sans/

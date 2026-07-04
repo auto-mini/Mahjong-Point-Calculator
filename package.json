@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/domain.test.js",
-    "build": "node scripts/verify-static-app.js",
+    "verify": "node scripts/verify-static-app.js .",
+    "build": "node scripts/build-static.js && node scripts/verify-static-app.js dist",
+    "preview": "node scripts/serve.js --root dist",
+    "preview:lan": "node scripts/serve.js --root dist --host 0.0.0.0",
     "start": "node scripts/serve.js"
   }
 }
