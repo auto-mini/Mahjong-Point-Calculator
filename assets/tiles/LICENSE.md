@@ -4,6 +4,10 @@ Source artwork:
 
 https://github.com/FluffyStuff/riichi-mahjong-tiles
 
+Upstream license:
+
+https://github.com/FluffyStuff/riichi-mahjong-tiles/blob/master/LICENSE.md
+
 The upstream repository describes its assets as public domain. Its README says
 that all assets are in the public domain.
 
