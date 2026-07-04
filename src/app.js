@@ -575,7 +575,7 @@ function indicatorPanel(title, note, key, disabled) {
               render();
             }
           },
-        }, tile ? [tileFace(tile), el("span", { className: "slot-index", text: String(index + 1) })] : [el("span", { className: "slot-plus", text: "+" }), el("span", { className: "slot-index", text: String(index + 1) })]),
+        }, tile ? [tileFace(tile)] : [el("span", { className: "slot-plus", text: "+" }), el("span", { className: "slot-index", text: String(index + 1) })]),
       ),
     ),
   ]);
@@ -627,7 +627,7 @@ function resultView(result) {
       el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
     ]),
     panel("역 목록", "도라/적도라/깡도라는 도라 N으로 합산한다.", [
-      el("div", { className: "result-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
+      el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
       result.alternatives.length ? el("button", { className: "secondary-action", text: "동점 해석 보기", onClick: () => openAlternatives(result.alternatives) }) : null,
     ]),
     panel("부수 breakdown", result.han >= 5 ? "만관 이상은 부수 무관으로 축약한다." : null, [
@@ -635,7 +635,14 @@ function resultView(result) {
         ? el("p", { className: "muted", text: "부수 무관" })
         : el("div", { className: "result-lines" }, fuBreakdownRows(result)),
     ]),
-    panel("지불", "론은 방총자 1명 지불, 쯔모는 오야/자 지불액을 구분한다.", [
+    paymentPanel(result),
+  ]);
+}
+
+function paymentPanel(result) {
+  return el("section", { className: "panel payment-panel" }, [
+    el("div", { className: "payment-row" }, [
+      el("h2", { text: "지불" }),
       el("strong", { className: "payment-amount", text: paymentDisplay(result.score) }),
     ]),
   ]);

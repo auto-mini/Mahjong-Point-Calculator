@@ -147,32 +147,54 @@ h1 {
 
 .button-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(96px, 128px));
+  justify-content: center;
+  gap: 12px;
 }
 
 .wind-grid,
 .chip-grid,
 .honba-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 9px;
   align-items: center;
 }
 
+.wind-grid {
+  --wind-chip-size: clamp(38px, 11vw, 44px);
+  grid-template-columns: repeat(4, var(--wind-chip-size));
+  justify-content: center;
+  gap: 10px;
+}
+
+.wind-grid .chip {
+  width: var(--wind-chip-size);
+  min-height: var(--wind-chip-size);
+  padding: 0;
+}
+
+.chip-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
 .honba-grid {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  gap: 6px;
+  --honba-chip-size: clamp(24px, 7.2vw, 31px);
+  grid-template-columns: repeat(9, var(--honba-chip-size));
+  justify-content: center;
+  gap: clamp(3px, 1vw, 5px);
 }
 
 .honba-grid .chip {
-  min-height: 36px;
+  width: var(--honba-chip-size);
+  min-height: var(--honba-chip-size);
   padding: 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .chip-grid.two {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(96px, 132px));
+  justify-content: center;
+  gap: 10px;
 }
 
 .label {
@@ -535,6 +557,10 @@ h1 {
   gap: 6px;
 }
 
+.win-candidates .tile-caption {
+  display: none;
+}
+
 .candidate-box {
   --tile-w: 27px;
   --tile-h: calc(var(--tile-w) * 1.326);
@@ -544,8 +570,8 @@ h1 {
 .slot-row {
   display: grid;
   grid-template-columns: repeat(5, 34px);
-  justify-content: space-between;
-  gap: 0;
+  justify-content: center;
+  gap: 8px;
 }
 
 .slot {
@@ -599,6 +625,7 @@ h1 {
   border-radius: 18px;
   padding: 22px;
   box-shadow: 0 14px 24px var(--shadow);
+  display: grid;
 }
 
 .result-card .score {
@@ -606,16 +633,19 @@ h1 {
   line-height: 1;
   font-weight: 900;
   margin: 18px 0 8px;
+  text-align: right;
 }
 
 .result-card .subscore {
   color: #ffe9d7;
   font-size: 18px;
   font-weight: 900;
+  text-align: right;
 }
 
 .result-role {
   font-weight: 900;
+  text-align: left;
 }
 
 .result-lines {
@@ -638,6 +668,28 @@ h1 {
   padding: 0;
   text-align: left;
   cursor: pointer;
+}
+
+.yaku-lines {
+  margin-left: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line-soft);
+}
+
+.payment-panel {
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+.payment-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.payment-row h2 {
+  margin-bottom: 0;
 }
 
 .payment-amount {
