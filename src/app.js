@@ -222,8 +222,8 @@ function stepper(label, value, onChange) {
 }
 
 function honbaSection() {
-  const options = Array.from({ length: 9 }, (_, index) => index);
-  if (state.honba > 8) options.push(state.honba);
+  const options = Array.from({ length: 10 }, (_, index) => index);
+  if (state.honba > 9) options.push(state.honba);
   return el("div", {}, [
     el("div", { className: "label", text: "본장" }),
     el("div", { className: "honba-grid" }, options.map((value) => chip(`${value}`, state.honba === value, () => setState({ honba: value })))),
@@ -520,6 +520,9 @@ function indicatorPanel(title, note, key, disabled) {
               next[index] = null;
               picker = null;
               setState({ [key]: next });
+            } else if (picker?.key === key && picker.index === index) {
+              picker = null;
+              render();
             } else {
               picker = { key, index };
               render();
@@ -741,26 +744,26 @@ function tileImageSrc(tile) {
   if (TILE_IMAGE_CACHE.has(tile)) return TILE_IMAGE_CACHE.get(tile);
   const parts = tileImageParts(tile);
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="104" viewBox="0 0 72 104">
+    <svg xmlns="http://www.w3.org/2000/svg" width="82" height="108" viewBox="0 0 82 108">
       <defs>
         <linearGradient id="face" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stop-color="#fffef7"/>
-          <stop offset="1" stop-color="#f3ead8"/>
+          <stop offset="0" stop-color="#fffef8"/>
+          <stop offset="1" stop-color="#f6eedc"/>
         </linearGradient>
         <linearGradient id="side" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stop-color="#90c9b7"/>
-          <stop offset=".62" stop-color="#6da998"/>
-          <stop offset="1" stop-color="#4f8978"/>
+          <stop offset="0" stop-color="#96d0bf"/>
+          <stop offset=".58" stop-color="#76b3a2"/>
+          <stop offset="1" stop-color="#4f8c7b"/>
         </linearGradient>
         <filter id="shadow" x="-20%" y="-20%" width="145%" height="145%">
-          <feDropShadow dx="3" dy="4" stdDeviation="1.1" flood-color="#7a806e" flood-opacity=".38"/>
+          <feDropShadow dx="3" dy="4" stdDeviation="1.15" flood-color="#7e8675" flood-opacity=".42"/>
         </filter>
       </defs>
-      <path d="M14 7h40c6 0 10 5 10 11v64c0 7-5 12-12 12H14c-5 0-8-3-8-8V15c0-5 3-8 8-8z" fill="url(#side)" filter="url(#shadow)"/>
-      <path d="M9 5h41c6 0 10 5 10 11v63c0 7-5 12-12 12H10c-5 0-8-3-8-8V13c0-5 3-8 7-8z" fill="url(#face)" stroke="#4d8978" stroke-width="1.8"/>
-      <path d="M58 18v60c0 5-4 10-10 10h-35" fill="none" stroke="#367564" stroke-width="2.1" opacity=".72"/>
-      <rect x="12" y="13" width="39" height="68" rx="5.5" fill="#fffdf5" stroke="#d6d0bf" stroke-width="1.2"/>
-      <path d="M15 15h32" stroke="#ffffff" stroke-width="2.5" opacity=".85"/>
+      <path d="M18 9h43c7 0 12 5 12 12v67c0 8-6 13-13 13H17c-6 0-10-4-10-10V20c0-6 5-11 11-11z" fill="url(#side)" filter="url(#shadow)"/>
+      <path d="M10 5h44c7 0 12 5 12 12v68c0 7-5 12-12 12H11C5 97 1 93 1 87V15C1 9 5 5 10 5z" fill="url(#face)" stroke="#4d8978" stroke-width="1.8"/>
+      <path d="M64 18v65c0 7-5 12-12 12H14" fill="none" stroke="#3e806f" stroke-width="2.35" opacity=".75"/>
+      <rect x="13" y="13" width="43" height="73" rx="6" fill="#fffdf6" stroke="#d6d0bf" stroke-width="1.15"/>
+      <path d="M16 15h36" stroke="#ffffff" stroke-width="2.6" opacity=".85"/>
       ${tileMarkSvg(parts)}
     </svg>
   `.trim();
@@ -790,7 +793,7 @@ function tileImageParts(tile) {
 function tileMarkSvg(parts) {
   if (parts.type === "honor") {
     if (parts.label === "백") return "";
-    return `<text x="31" y="61" text-anchor="middle" font-family="serif" font-size="34" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
+    return `<text x="34" y="63" text-anchor="middle" font-family="serif" font-size="37" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
   }
   if (parts.suit === "m") return manMarkSvg(parts);
   if (parts.suit === "p") return pinMarkSvg(parts);
@@ -801,15 +804,15 @@ function manMarkSvg(parts) {
   const fill = parts.red ? "#e21d2b" : "#c43b37";
   if (parts.red) {
     return `
-      <text x="31" y="38" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">赤</text>
-      <text x="31" y="57" text-anchor="middle" font-family="serif" font-size="22" font-weight="900" fill="${fill}">五</text>
-      <text x="31" y="73" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">萬</text>
+      <text x="34" y="38" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">赤</text>
+      <text x="34" y="58" text-anchor="middle" font-family="serif" font-size="23" font-weight="900" fill="${fill}">五</text>
+      <text x="34" y="75" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">萬</text>
     `;
   }
   const numerals = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
   return `
-    <text x="31" y="35" text-anchor="middle" font-family="serif" font-size="25" font-weight="900" fill="#111111">${numerals[parts.number]}</text>
-    <text x="31" y="66" text-anchor="middle" font-family="serif" font-size="29" font-weight="900" fill="${fill}">萬</text>
+    <text x="34" y="35" text-anchor="middle" font-family="serif" font-size="25" font-weight="900" fill="#111111">${numerals[parts.number]}</text>
+    <text x="34" y="67" text-anchor="middle" font-family="serif" font-size="30" font-weight="900" fill="${fill}">萬</text>
   `;
 }
 
@@ -818,7 +821,7 @@ function pinMarkSvg(parts) {
   return dotLayout(parts.number)
     .map(([x, y], index) => {
       const dotFill = parts.red || index % 2 === 0 ? fill : "#d13b42";
-      return `<circle cx="${31 + x}" cy="${48 + y}" r="5.2" fill="#faf7ef" stroke="#111111" stroke-width="1.2"/><circle cx="${31 + x}" cy="${48 + y}" r="3.2" fill="none" stroke="${dotFill}" stroke-width="1.9"/><circle cx="${31 + x}" cy="${48 + y}" r="1.1" fill="${dotFill}"/>`;
+      return `<circle cx="${34 + x}" cy="${50 + y}" r="5.35" fill="#faf7ef" stroke="#111111" stroke-width="1.2"/><circle cx="${34 + x}" cy="${50 + y}" r="3.3" fill="none" stroke="${dotFill}" stroke-width="1.9"/><circle cx="${34 + x}" cy="${50 + y}" r="1.1" fill="${dotFill}"/>`;
     })
     .join("");
 }
@@ -826,7 +829,7 @@ function pinMarkSvg(parts) {
 function souMarkSvg(parts) {
   const fill = parts.red ? "#e21d2b" : "#0a6a22";
   return dotLayout(parts.number)
-    .map(([x, y]) => `<rect x="${28 + x}" y="${39 + y}" width="6.5" height="17" rx="3.2" fill="${fill}" stroke="#034c18" stroke-width=".8"/><circle cx="${31.25 + x}" cy="${42 + y}" r="1.4" fill="#fffaf0" opacity=".85"/><circle cx="${31.25 + x}" cy="${53 + y}" r="1.4" fill="#fffaf0" opacity=".75"/>`)
+    .map(([x, y]) => `<rect x="${31 + x}" y="${41 + y}" width="6.5" height="17" rx="3.2" fill="${fill}" stroke="#034c18" stroke-width=".8"/><circle cx="${34.25 + x}" cy="${44 + y}" r="1.4" fill="#fffaf0" opacity=".85"/><circle cx="${34.25 + x}" cy="${55 + y}" r="1.4" fill="#fffaf0" opacity=".75"/>`)
     .join("");
 }
 

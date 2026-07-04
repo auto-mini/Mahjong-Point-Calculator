@@ -96,7 +96,7 @@ test("dora and ura indicators participate in visible tile quantity validation", 
   assert.equal(errors.includes("동일패 5장 이상: 1만이 5장입니다."), true);
 });
 
-test("chankan requires a sequence wait in the supported MVP forms", () => {
+test("chankan does not require a sequence wait", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
     roundWind: "east",
@@ -112,7 +112,7 @@ test("chankan requires a sequence wait in the supported MVP forms", () => {
     winTile: "s3",
     doraIndicators: ["p9"],
   }));
-  assert.equal(errors.includes("창깡은 순자 대기에서만 선택할 수 있습니다."), true);
+  assert.equal(errors.length, 0);
 });
 
 test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {

@@ -692,16 +692,6 @@ function pushUniqueErrors(errors, additions) {
   }
 }
 
-function validChankanSequenceWait(state) {
-  const shapes = decomposeHand(state.melds || []);
-  if (!shapes.length || !state.winTile) return true;
-  const winTile = normalizeTile(state.winTile);
-  return shapes.some((shape) =>
-    shape.type === "standard" &&
-    shape.melds.some((meld) => meld.kind === "sequence" && meld.tiles.map(normalizeTile).includes(winTile)),
-  );
-}
-
 export function validateState(state) {
   const errors = [];
   if (!state.winMethod) errors.push("론/쯔모를 선택해주세요.");
@@ -735,7 +725,6 @@ export function validateState(state) {
   if (state.situation?.chankan && state.situation?.houtei) errors.push("창깡과 하저로어는 동시에 선택할 수 없습니다.");
   if (state.situation?.rinshan && state.situation?.ippatsu) errors.push("영상개화와 일발은 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && state.situation?.doubleRiichi) errors.push("창깡과 더블리치는 동시에 선택할 수 없습니다.");
-  if (state.situation?.chankan && !validChankanSequenceWait(state)) errors.push("창깡은 순자 대기에서만 선택할 수 있습니다.");
   if (state.winMethod === "ron" && (state.situation?.haitei || state.situation?.rinshan)) errors.push("해저로월/영상개화는 쯔모 전용입니다.");
   if (state.winMethod === "tsumo" && (state.situation?.houtei || state.situation?.chankan)) errors.push("하저로어/창깡은 론 전용입니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);

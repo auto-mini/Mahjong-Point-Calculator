@@ -155,7 +155,14 @@ h1 {
 }
 
 .honba-grid {
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.honba-grid .chip {
+  min-height: 31px;
+  padding: 0;
+  font-size: 12px;
 }
 
 .chip-grid.two {
@@ -301,7 +308,7 @@ h1 {
 }
 
 .meld-box {
-  --tile-w: 25px;
+  --tile-w: 27px;
   --tile-h: 36px;
   width: fit-content;
   max-width: 100%;
@@ -364,12 +371,12 @@ h1 {
 .tile-button {
   border: 0;
   border-radius: 8px;
-  padding: 2px;
+  padding: 1px;
   background: transparent;
   color: var(--text);
   display: grid;
   justify-items: center;
-  gap: 2px;
+  gap: 1px;
   line-height: 1;
 }
 
@@ -384,16 +391,16 @@ h1 {
 }
 
 .tile-grid {
-  --tile-w: 24px;
-  --tile-h: 35px;
+  --tile-w: 26px;
+  --tile-h: 36px;
   display: grid;
   gap: 8px;
 }
 
 .tile-grid-row {
   display: grid;
-  grid-template-columns: 18px 1fr;
-  gap: 4px;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 3px;
   align-items: center;
 }
 
@@ -403,8 +410,9 @@ h1 {
 }
 
 .tile-grid-row .tile-row {
-  gap: 2px;
+  gap: 1px;
   flex-wrap: nowrap;
+  justify-content: space-between;
   min-width: 0;
 }
 
@@ -468,7 +476,7 @@ h1 {
 }
 
 .win-candidates {
-  --tile-w: 30px;
+  --tile-w: 32px;
   --tile-h: 43px;
   display: flex;
   flex-wrap: wrap;
@@ -476,7 +484,7 @@ h1 {
 }
 
 .candidate-box {
-  --tile-w: 30px;
+  --tile-w: 32px;
   --tile-h: 43px;
 }
 
@@ -487,7 +495,7 @@ h1 {
 }
 
 .slot {
-  --tile-w: 30px;
+  --tile-w: 32px;
   --tile-h: 43px;
   min-height: 66px;
   border: 1px solid var(--line);
