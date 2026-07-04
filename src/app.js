@@ -70,6 +70,7 @@ let modal = null;
 let latestResult = null;
 
 render();
+window.addEventListener("hashchange", restoreStateFromHash);
 
 function loadInitialState() {
   if (location.hash.startsWith("#s=")) {
@@ -78,6 +79,34 @@ function loadInitialState() {
     initialShareError = "공유 링크를 읽을 수 없음";
   }
   return normalizeUiState(defaultState());
+}
+
+function restoreStateFromHash() {
+  if (!location.hash.startsWith("#s=")) return;
+  const decoded = decodeShareState(location.hash.slice(3));
+  if (!decoded) {
+    initialShareError = "공유 링크를 읽을 수 없음";
+    state = normalizeUiState(defaultState());
+    step = 1;
+    selectedTile = null;
+    selectedCandidate = null;
+    picker = null;
+    modal = null;
+    lastSavedRecentKey = null;
+    render();
+    return;
+  }
+  const next = normalizeUiState(decoded);
+  if (encodeShareState(next) === encodeShareState(state)) return;
+  initialShareError = null;
+  state = next;
+  step = state.winMethod ? 2 : 1;
+  selectedTile = null;
+  selectedCandidate = null;
+  picker = null;
+  modal = null;
+  lastSavedRecentKey = null;
+  render();
 }
 
 function setState(next) {
@@ -557,7 +586,7 @@ function pageThree() {
     indicatorPanel("도라 표시패", null, "doraIndicators", false),
     indicatorPanel("우라도라 표시패", null, "uraIndicators", !needsUra),
     activePicker ? panel("표시패 선택", null, [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
-    shouldShowDoraErrors() && doraErrors.length ? panel("확인 필요", null, doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
+    doraErrors.length ? panel("확인 필요", null, doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -831,10 +860,6 @@ function doraValidationErrors() {
   return messages;
 }
 
-function shouldShowDoraErrors() {
-  return normalizedSlots(state.doraIndicators).some(Boolean) || normalizedSlots(state.uraIndicators).some(Boolean);
-}
-
 function leadingCount(values) {
   let count = 0;
   for (const value of values) {
@@ -917,7 +942,8 @@ function saveRecent(result, rerender = true) {
       melds: state.melds.map((meld) => ({ tiles: meld.tiles, open: meld.open })),
     })),
   };
-  const recent = readRecent().filter((entry) => entry.label !== item.label);
+  const itemKey = encodeShareState(item.state);
+  const recent = readRecent().filter((entry) => encodeShareState(entry.state) !== itemKey);
   recent.unshift(item);
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
   if (rerender) render();
