@@ -372,7 +372,7 @@ function tileGrid(tiles, activeTile, onSelect) {
 
 function tileButton(tile, onClick, active = false) {
   return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [
-    tileFace(tile),
+    tileFace(tile, active),
     el("span", { className: "tile-caption", text: tileLabel(tile) }),
   ]);
 }
@@ -381,14 +381,6 @@ function tileFace(tile, selected = false) {
   return el("span", { className: `tile ${tile.endsWith("5r") ? "red-five" : ""} ${selected ? "selected" : ""}` }, [
     el("span", { className: "tile-side" }),
     el("span", { className: "tile-front" }, [
-      el("img", {
-        className: "tile-base",
-        attrs: {
-          src: `${TILE_ASSET_ROOT}/Front.png`,
-          alt: "",
-          draggable: "false",
-        },
-      }),
       el("img", {
         className: "tile-mark",
         attrs: {
@@ -636,8 +628,10 @@ function resultView(result) {
     panel("부수 breakdown", result.han >= 5 ? "만관 이상은 부수 무관으로 축약한다." : null, [
       result.han >= 5
         ? el("p", { className: "muted", text: "부수 무관" })
-        : el("div", { className: "result-lines" }, result.fuLines.map((line) => el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })]))),
-      result.han < 5 ? el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]) : null,
+        : el("div", { className: "result-lines" }, [
+            ...result.fuLines.map((line) => el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })])),
+            el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]),
+          ]),
     ]),
     panel("지불", "론은 방총자 1명 지불, 쯔모는 친/자 지불액을 구분한다.", [
       el("div", { className: "result-lines" }, [
@@ -908,9 +902,9 @@ function renderModal() {
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
       recent.length
-        ? el("div", {}, recent.map((item) => el("button", { className: "recent-item", text: recentItemLabel(item), onClick: () => restoreRecent(item) })))
+        ? el("div", { className: "recent-list" }, recent.map((item) => el("button", { className: "recent-item", text: recentItemLabel(item), onClick: () => restoreRecent(item) })))
         : el("p", { className: "panel-note", text: "저장된 최근계산이 없습니다." }),
-      recent.length ? el("button", { className: "secondary-action", text: "전체 삭제", onClick: () => { localStorage.removeItem(RECENT_KEY); render(); } }) : null,
+      recent.length ? el("button", { className: "secondary-action recent-clear", text: "전체 삭제", onClick: () => { localStorage.removeItem(RECENT_KEY); render(); } }) : null,
     ];
   } else if (modal?.type === "alternatives") {
     body = [
