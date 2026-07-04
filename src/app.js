@@ -1,7 +1,6 @@
 ﻿import {
   ALL_INDICATORS_34,
   ALL_TILES_37,
-  WINDS,
   calculate,
   candidateMeldsFor,
   createMeld,
@@ -18,7 +17,7 @@
 
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
 const app = document.querySelector("#app");
-const TILE_ASSET_ROOT = "./assets/tiles/regular";
+const TILE_ASSET_ROOT = "./assets/tiles/b2";
 const TILE_ASSET_FILES = {
   m1: "Man1.png",
   m2: "Man2.png",
@@ -270,19 +269,20 @@ function honbaSection() {
 }
 
 function situationChips() {
-  const item = (key, label, disabled = false) => chip(label, Boolean(state.situation[key]), () => toggleSituation(key), disabled);
+  const item = (key, label) => chip(label, Boolean(state.situation[key]), () => toggleSituation(key));
   const riichiActive = state.situation.riichi || state.situation.doubleRiichi;
   const hasOpen = state.melds.some((meld) => meld.open);
-  return [
-    item("riichi", "리치", hasOpen || state.situation.doubleRiichi),
-    item("doubleRiichi", "더블리치", hasOpen || state.situation.riichi),
-    item("ippatsu", "일발", hasOpen || !riichiActive),
-    item("chankan", "창깡", state.winMethod === "tsumo" || state.situation.rinshan),
-    item("rinshan", "영상개화", state.winMethod === "ron" || state.situation.chankan),
-    item("haitei", "해저로월", state.winMethod === "ron" || state.situation.houtei),
-    item("houtei", "하저로어", state.winMethod === "tsumo" || state.situation.haitei),
+  const chips = [
+    !hasOpen && !state.situation.doubleRiichi ? item("riichi", "리치") : null,
+    !hasOpen && !state.situation.riichi ? item("doubleRiichi", "더블리치") : null,
+    !hasOpen && riichiActive ? item("ippatsu", "일발") : null,
+    state.winMethod === "ron" && !state.situation.rinshan ? item("chankan", "창깡") : null,
+    state.winMethod === "tsumo" && !state.situation.chankan ? item("rinshan", "영상개화") : null,
+    state.winMethod === "tsumo" && !state.situation.houtei ? item("haitei", "해저로월") : null,
+    state.winMethod === "ron" && !state.situation.haitei ? item("houtei", "하저로어") : null,
     item("none", "해당없음"),
   ];
+  return chips.filter(Boolean);
 }
 
 function toggleSituation(key) {
@@ -373,27 +373,28 @@ function tileGrid(tiles, activeTile, onSelect) {
 function tileButton(tile, onClick, active = false) {
   return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile) }, [
     tileFace(tile, active),
-    el("span", { className: "tile-caption", text: tileLabel(tile) }),
+    el("span", { className: "tile-caption", text: compactTileLabel(tile) }),
   ]);
+}
+
+function compactTileLabel(tile) {
+  const suited = /^([mps])([1-9])$/.exec(tile.endsWith("5r") ? `${tile[0]}5` : tile);
+  return suited ? suited[2] : tileLabel(tile);
 }
 
 function tileFace(tile, selected = false) {
   const classes = ["tile"];
   if (tile.endsWith("5r")) classes.push("red-five");
-  if (WINDS.includes(tile)) classes.push("wind-tile");
   if (selected) classes.push("selected");
   return el("span", { className: classes.join(" ") }, [
-    el("span", { className: "tile-side" }),
-    el("span", { className: "tile-front" }, [
-      el("img", {
-        className: "tile-mark",
-        attrs: {
-          src: tileAssetSrc(tile),
-          alt: tileLabel(tile),
-          draggable: "false",
-        },
-      }),
-    ]),
+    el("img", {
+      className: "tile-image",
+      attrs: {
+        src: tileAssetSrc(tile),
+        alt: tileLabel(tile),
+        draggable: "false",
+      },
+    }),
   ]);
 }
 
@@ -522,7 +523,7 @@ function pageThree() {
   const kanText = kanJudgementText();
   const activePicker = picker;
   return el("div", {}, [
-    panel("깡 직후 판정", null, [
+    panel("깡 직후에 화료했나요?", null, [
       el("div", { className: "button-grid" }, [
         button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
         button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
@@ -532,9 +533,7 @@ function pageThree() {
     ]),
     indicatorPanel("도라 표시패", null, "doraIndicators", false),
     indicatorPanel("우라도라 표시패", null, "uraIndicators", !needsUra),
-    panel("표시패 선택", null, [
-      activePicker ? tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker)) : el("p", { className: "panel-note", text: "입력할 슬롯을 선택하세요." }),
-    ]),
+    activePicker ? panel("표시패 선택", null, [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
     shouldShowDoraErrors() && doraErrors.length ? panel("확인 필요", null, doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
@@ -621,7 +620,7 @@ function resultView(result) {
   autoSaveRecent(result);
   return el("div", {}, [
     el("section", { className: "result-card" }, [
-      el("div", { text: result.score.dealer ? "오야" : "자" }),
+      el("div", { className: "result-role", text: result.score.dealer ? "오야" : "자" }),
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
       el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
     ]),
@@ -635,9 +634,7 @@ function resultView(result) {
         : el("div", { className: "result-lines" }, fuBreakdownRows(result)),
     ]),
     panel("지불", "론은 방총자 1명 지불, 쯔모는 오야/자 지불액을 구분한다.", [
-      el("div", { className: "result-lines" }, [
-        el("div", { className: "result-line" }, [el("span", { text: state.winMethod === "ron" ? "론" : "쯔모" }), el("strong", { text: paymentDisplay(result.score) })]),
-      ]),
+      el("strong", { className: "payment-amount", text: paymentDisplay(result.score) }),
     ]),
   ]);
 }
@@ -679,7 +676,7 @@ function totalScoreDisplay(score) {
 }
 
 function paymentDisplay(score) {
-  return score.display.replace(" all", "all").replace("점", "");
+  return score.display.replace("/", " / ").replace("점", "");
 }
 
 function hanFuLabel(result) {
@@ -748,7 +745,7 @@ function canStepThreeContinue() {
 }
 
 function handErrors() {
-  const messages = [];
+  const messages = handStructureWarnings();
   if (!state.melds.length) messages.push("손패 미완성: 세트를 입력해주세요.");
   else if (!isHandComplete()) messages.push("손패 미완성 또는 화료 형태 불가: 4몸통+1머리 또는 치또이 형태가 필요합니다.");
   if (isHandComplete() && !state.winTile) messages.push("화료패를 선택해주세요.");
@@ -756,10 +753,25 @@ function handErrors() {
 }
 
 function visibleHandErrors() {
+  const structureWarnings = handStructureWarnings();
+  if (structureWarnings.length) return structureWarnings;
   const errors = handErrors();
   if (!state.melds.length) return [];
   if (!isHandComplete()) return [];
   return errors;
+}
+
+function handStructureWarnings() {
+  const pairCount = state.melds.filter((meld) => meld.kind === "pair").length;
+  const bodyCount = state.melds.filter((meld) => ["sequence", "triplet", "quad"].includes(meld.kind)).length;
+  const messages = [];
+  if (pairCount >= 2 && bodyCount >= 1) {
+    messages.push("머리가 2개 이상인데 몸통이 함께 입력되어 있습니다. 치또이는 머리만 7개 입력해야 합니다.");
+  }
+  if (bodyCount >= 5) {
+    messages.push("몸통이 5개 이상입니다. 일반 화료는 몸통 4개와 머리 1개여야 합니다.");
+  }
+  return messages;
 }
 
 function doraValidationErrors() {
