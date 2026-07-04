@@ -119,14 +119,14 @@ export function nextDora(indicator) {
   throw new Error(`Unknown dora indicator: ${indicator}`);
 }
 
-export function countDora(tiles, indicators = []) {
+export function countDora(tiles, indicators = [], { includeRed = true } = {}) {
   const normalizedTiles = tiles.map(normalizeTile);
   const doraTiles = indicators.filter(Boolean).map(nextDora);
   let count = 0;
   for (const dora of doraTiles) {
     count += normalizedTiles.filter((tile) => tile === dora).length;
   }
-  count += tiles.filter((tile) => RED_FIVES.has(tile)).length;
+  if (includeRed) count += tiles.filter((tile) => RED_FIVES.has(tile)).length;
   return count;
 }
 
@@ -319,29 +319,63 @@ function valuePairFu(pairTile, roundWind, seatWind) {
   return fu;
 }
 
-function waitFu(shape, winTile) {
-  if (shape.type !== "standard" || !winTile) return { fu: 0, wait: "unknown" };
+function sequenceWaitFu(meld, winTile) {
   const tile = normalizeTile(winTile);
-  if (shape.pair.tiles.includes(tile)) return { fu: 2, wait: "단기" };
-  for (const meld of shape.melds.filter((item) => item.kind === "sequence")) {
-    if (!meld.tiles.includes(tile)) continue;
-    const numbers = meld.tiles.map((item) => parseSuit(item)?.number).sort((a, b) => a - b);
-    const parsed = parseSuit(tile);
-    if (!parsed) continue;
-    if (parsed.number === numbers[1]) return { fu: 2, wait: "간짱" };
-    if (numbers[0] === 1 && parsed.number === 3) return { fu: 2, wait: "변짱" };
-    if (numbers[2] === 9 && parsed.number === 7) return { fu: 2, wait: "변짱" };
-    return { fu: 0, wait: "양면" };
-  }
-  return { fu: 0, wait: "샤보" };
+  const normalizedTiles = meld.tiles.map(normalizeTile);
+  if (!normalizedTiles.includes(tile)) return null;
+  const numbers = normalizedTiles.map((item) => parseSuit(item)?.number).sort((a, b) => a - b);
+  const parsed = parseSuit(tile);
+  if (!parsed || numbers.some((number) => !number)) return null;
+  if (parsed.number === numbers[1]) return { fu: 2, wait: "간짱" };
+  if (numbers[0] === 1 && parsed.number === 3) return { fu: 2, wait: "변짱" };
+  if (numbers[2] === 9 && parsed.number === 7) return { fu: 2, wait: "변짱" };
+  return { fu: 0, wait: "양면" };
 }
 
-function meldFu(meld, winTile, winMethod) {
+function winningContexts(shape, state) {
+  if (shape.type !== "standard" || !state.winTile) return [{ wait: { fu: 0, wait: "unknown" }, ronCompletedMeld: null, key: "unknown" }];
+  const tile = normalizeTile(state.winTile);
+  const contexts = [];
+  if (shape.pair.tiles.map(normalizeTile).includes(tile)) {
+    contexts.push({ wait: { fu: 2, wait: "단기" }, ronCompletedMeld: null, key: "pair" });
+  }
+  shape.melds.forEach((meld, index) => {
+    if (meld.open) return;
+    const normalizedTiles = meld.tiles.map(normalizeTile);
+    if (!normalizedTiles.includes(tile)) return;
+    if (meld.kind === "sequence") {
+      const wait = sequenceWaitFu(meld, state.winTile);
+      if (wait) contexts.push({ wait, ronCompletedMeld: null, key: `sequence:${index}:${wait.wait}:${wait.fu}` });
+    } else if (meld.kind === "triplet") {
+      contexts.push({
+        wait: { fu: 0, wait: "샤보" },
+        ronCompletedMeld: state.winMethod === "ron" ? meld : null,
+        key: `triplet:${index}`,
+      });
+    }
+  });
+  return contexts.length ? contexts : [{ wait: { fu: 0, wait: "unknown" }, ronCompletedMeld: null, key: "unknown" }];
+}
+
+function waitFu(shape, state, context = null) {
+  if (shape.type !== "standard" || !state.winTile) return { fu: 0, wait: "unknown" };
+  if (context) return context.wait;
+  const best = winningContexts(shape, state).sort((a, b) => a.wait.fu - b.wait.fu)[0];
+  return best?.wait || { fu: 0, wait: "unknown" };
+}
+
+function isRonCompletedMeld(meld, state, context = null) {
+  if (state.winMethod !== "ron") return false;
+  if (context) return context.ronCompletedMeld === meld;
+  return meld.kind === "triplet" && meld.tiles.map(normalizeTile).includes(normalizeTile(state.winTile || ""));
+}
+
+function meldFu(meld, state, context = null) {
   if (!["triplet", "quad"].includes(meld.kind)) return 0;
   const tile = normalizeTile(meld.tiles[0]);
   const terminalOrHonor = isYaochu(tile);
   let open = meld.open;
-  if (!open && winMethod === "ron" && meld.tiles.map(normalizeTile).includes(normalizeTile(winTile || ""))) {
+  if (!open && isRonCompletedMeld(meld, state, context)) {
     open = true;
   }
   if (meld.kind === "triplet") {
@@ -352,11 +386,9 @@ function meldFu(meld, winTile, winMethod) {
   return open ? 8 : 16;
 }
 
-function isConcealedTripletForYaku(meld, state) {
+function isConcealedTripletForYaku(meld, state, context = null) {
   if (!["triplet", "quad"].includes(meld.kind) || meld.open) return false;
-  if (meld.kind === "triplet" && state.winMethod === "ron" && meld.tiles.map(normalizeTile).includes(normalizeTile(state.winTile || ""))) {
-    return false;
-  }
+  if (meld.kind === "triplet" && isRonCompletedMeld(meld, state, context)) return false;
   return true;
 }
 
@@ -376,7 +408,7 @@ function hasSameSequenceSet(shape, requiredCopies) {
   return [...counts.values()].reduce((pairs, count) => pairs + Math.floor(count / 2), 0) >= requiredCopies;
 }
 
-function detectYakuman(shape, state) {
+function detectYakuman(shape, state, context = null) {
   const tiles = handTilesFromShape(shape);
   if (tiles.every(isHonor)) return "자일색";
   if (tiles.every(isGreen)) return "녹일색";
@@ -391,12 +423,12 @@ function detectYakuman(shape, state) {
       return "소사희";
     }
     if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) return "사깡쯔";
-    if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state))) return "사암각";
+    if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state, context))) return "사암각";
   }
   return null;
 }
 
-function detectYaku(shape, state) {
+function detectYaku(shape, state, context = null) {
   const yaku = [];
   const closed = isClosed(shape);
   if (state.situation?.doubleRiichi && closed) yaku.push({ name: "더블리치", han: 2 });
@@ -422,7 +454,7 @@ function detectYaku(shape, state) {
     const sequenceMelds = shape.melds.filter((meld) => meld.kind === "sequence");
     const triplets = shape.melds.filter((meld) => ["triplet", "quad"].includes(meld.kind));
     const pairTile = normalizeTile(shape.pair.tiles[0]);
-    const wait = waitFu(shape, state.winTile);
+    const wait = waitFu(shape, state, context);
     if (
       closed &&
       sequenceMelds.length === 4 &&
@@ -441,7 +473,7 @@ function detectYaku(shape, state) {
       else if (tile === state.roundWind || tile === state.seatWind) yaku.push({ name: WIND_LABELS[tile], han: 1 });
     }
     if (triplets.length === 4) yaku.push({ name: "또이또이", han: 2 });
-    if (triplets.filter((meld) => isConcealedTripletForYaku(meld, state)).length >= 3) yaku.push({ name: "삼암각", han: 2 });
+    if (triplets.filter((meld) => isConcealedTripletForYaku(meld, state, context)).length >= 3) yaku.push({ name: "삼암각", han: 2 });
     if (shape.melds.filter((meld) => meld.kind === "quad").length >= 3) yaku.push({ name: "삼깡쯔", han: 2 });
     if (DRAGONS.filter((dragon) => triplets.some((meld) => normalizeTile(meld.tiles[0]) === dragon)).length === 2 && DRAGONS.includes(pairTile)) {
       yaku.push({ name: "소삼원", han: 2 });
@@ -494,7 +526,7 @@ function dedupeYaku(yaku) {
   return [...best.values()];
 }
 
-function calculateFu(shape, state) {
+function calculateFu(shape, state, context = null) {
   if (shape.type === "chiitoi") {
     return {
       fu: 25,
@@ -504,10 +536,10 @@ function calculateFu(shape, state) {
     };
   }
   const closed = isClosed(shape);
-  const wait = waitFu(shape, state.winTile);
+  const wait = waitFu(shape, state, context);
   const pairFu = valuePairFu(shape.pair.tiles[0], state.roundWind, state.seatWind);
   const meldLines = shape.melds
-    .map((meld) => ({ name: `${tileLabel(meld.tiles[0])} ${meld.kind === "quad" ? "깡쯔" : "커쯔"}`, fu: meldFu(meld, state.winTile, state.winMethod) }))
+    .map((meld) => ({ name: `${tileLabel(meld.tiles[0])} ${meld.kind === "quad" ? "깡쯔" : "커쯔"}`, fu: meldFu(meld, state, context) }))
     .filter((line) => line.fu > 0);
   let rawFu = 20;
   const lines = [{ name: "기본부", fu: 20 }];
@@ -739,8 +771,7 @@ export function validateState(state) {
   if (!state.melds?.length) errors.push("손패를 입력해주세요.");
   if (state.melds?.length && !state.winTile) errors.push("화료패를 선택해주세요.");
   const tiles = flattenMelds(state.melds || []);
-  const normalizedTiles = tiles.map(normalizeTile);
-  if (state.winTile && !normalizedTiles.includes(normalizeTile(state.winTile))) errors.push("화료패가 최종 손패에 없습니다.");
+  if (state.winTile && !winningTileCandidates(state.melds || []).includes(state.winTile)) errors.push("화료패가 최종 손패에 없습니다.");
   const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   pushUniqueErrors(errors, validateTiles(tiles));
   pushUniqueErrors(errors, validateTiles([
@@ -776,6 +807,7 @@ export function validateState(state) {
   if (state.situation?.rinshan && !quads.length) errors.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
   if (state.situation?.rinshan && state.lastKanWin === false) errors.push("영상개화는 깡 직후 화료여야 합니다.");
   if (state.situation?.rinshan && state.lastKanWin === true && resolvedLastKanClosed(state) === null && quads.length) errors.push("쯔모 직전 깡 종류를 선택해주세요.");
+  if (!state.situation?.rinshan && !state.situation?.chankan && state.lastKanWin === null) errors.push("마지막 깡 직후 질문에 응답해주세요.");
   if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation?.rinshan) errors.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);
   if (hasOpen && (state.situation?.riichi || state.situation?.doubleRiichi || state.situation?.ippatsu)) {
@@ -810,41 +842,43 @@ export function calculate(state) {
 
   const results = [];
   for (const shape of shapes) {
-    const yakuman = detectYakuman(shape, state);
-    if (yakuman) return { ok: false, errors: [`역만 손패입니다. 부수 계산 대상이 아닙니다. (${yakuman})`] };
-    const baseYaku = detectYaku(shape, state);
-    const handTiles = flattenMelds(state.melds || []);
-    const dora = countDora(handTiles, state.doraIndicators || []);
-    const ura = state.situation?.riichi || state.situation?.doubleRiichi ? countDora(handTiles, state.uraIndicators || []) : 0;
-    if (!baseYaku.length) {
-      if (dora || ura) continue;
-      continue;
+    for (const context of winningContexts(shape, state)) {
+      const yakuman = detectYakuman(shape, state, context);
+      if (yakuman) return { ok: false, errors: [`역만 손패입니다. 부수 계산 대상이 아닙니다. (${yakuman})`] };
+      const baseYaku = detectYaku(shape, state, context);
+      const handTiles = flattenMelds(state.melds || []);
+      const dora = countDora(handTiles, state.doraIndicators || []);
+      const ura = state.situation?.riichi || state.situation?.doubleRiichi ? countDora(handTiles, state.uraIndicators || [], { includeRed: false }) : 0;
+      if (!baseYaku.length) {
+        if (dora || ura) continue;
+        continue;
+      }
+      const yaku = [...baseYaku];
+      if (dora) yaku.push({ name: "도라", han: dora });
+      if (ura) yaku.push({ name: "우라도라", han: ura });
+      const han = yaku.reduce((sum, item) => sum + item.han, 0);
+      const fuInfo = calculateFu(shape, state, context);
+      const score = calculateScore({
+        han,
+        fu: fuInfo.fu,
+        seatWind: state.seatWind,
+        winMethod: state.winMethod,
+        honba: state.honba,
+        riichiSticks: state.riichiSticks,
+      });
+      results.push({
+        ok: true,
+        shape,
+        key: `${resultKey(shape)}|win:${context.key}`,
+        yaku,
+        han,
+        fu: han >= 5 ? null : fuInfo.fu,
+        rawFu: fuInfo.rawFu,
+        fuLines: han >= 5 ? [] : fuInfo.lines,
+        wait: fuInfo.wait,
+        score,
+      });
     }
-    const yaku = [...baseYaku];
-    if (dora) yaku.push({ name: "도라", han: dora });
-    if (ura) yaku.push({ name: "우라도라", han: ura });
-    const han = yaku.reduce((sum, item) => sum + item.han, 0);
-    const fuInfo = calculateFu(shape, state);
-    const score = calculateScore({
-      han,
-      fu: fuInfo.fu,
-      seatWind: state.seatWind,
-      winMethod: state.winMethod,
-      honba: state.honba,
-      riichiSticks: state.riichiSticks,
-    });
-    results.push({
-      ok: true,
-      shape,
-      key: resultKey(shape),
-      yaku,
-      han,
-      fu: han >= 5 ? null : fuInfo.fu,
-      rawFu: fuInfo.rawFu,
-      fuLines: han >= 5 ? [] : fuInfo.lines,
-      wait: fuInfo.wait,
-      score,
-    });
   }
   if (!results.length) return { ok: false, errors: ["도라만 있고 일반 역이 없습니다."] };
   results.sort(compareResults);
@@ -887,7 +921,7 @@ export function candidateMeldsFor(tile) {
 }
 
 export function winningTileCandidates(melds) {
-  return uniquePhysicalTiles(flattenMelds(melds || []));
+  return uniquePhysicalTiles(flattenMelds((melds || []).filter((meld) => !meld.open && meld.kind !== "quad")));
 }
 
 export function encodeShareState(state) {

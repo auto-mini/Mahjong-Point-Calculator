@@ -17,7 +17,7 @@ import {
 } from "../src/domain.js";
 
 function calc(partial) {
-  return calculate(createStateFromMelds(partial));
+  return calculate(createStateFromMelds({ lastKanWin: false, ...partial }));
 }
 
 function payload(value) {
@@ -82,6 +82,22 @@ test("winning tile candidates keep red five separate from normal five", () => {
     { tiles: ["east", "east"] },
   ]);
   assert.deepEqual(candidates, ["m3", "m4", "m5r", "m5", "m6", "m7", "east"]);
+});
+
+test("winning tile candidates exclude open fixed melds", () => {
+  const candidates = winningTileCandidates([
+    { tiles: ["m1", "m2", "m3"], open: true },
+    { tiles: ["p5", "p5"] },
+  ]);
+  assert.deepEqual(candidates, ["p5"]);
+});
+
+test("winning tile candidates exclude closed quads", () => {
+  const candidates = winningTileCandidates([
+    createMeld(["white", "white", "white", "white"]),
+    createMeld(["p5", "p5"]),
+  ]);
+  assert.deepEqual(candidates, ["p5"]);
 });
 
 test("state validation catches absent win tile and invalid ippatsu", () => {
@@ -292,6 +308,72 @@ test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {
   assert.equal(result.yaku.some((item) => item.name === "핑후"), true);
 });
 
+test("winning tile interpretation chooses the best wait and yaku", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p3", "p4", "p5"] },
+      { tiles: ["p6", "p7", "p8"] },
+      { tiles: ["s3", "s4", "s5"] },
+      { tiles: ["m2", "m2"] },
+    ],
+    winTile: "m2",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 2);
+  assert.equal(result.fu, 30);
+  assert.equal(result.score.display, "2000점");
+  assert.equal(result.yaku.some((item) => item.name === "핑후"), true);
+});
+
+test("winning tile shared by multiple sequences can still be pinfu", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m3", "m4", "m5"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["p8", "p8"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 1);
+  assert.equal(result.fu, 30);
+  assert.equal(result.score.display, "1000점");
+  assert.equal(result.yaku.some((item) => item.name === "핑후"), true);
+});
+
+test("ron winning tile in a sequence does not open unrelated closed triplets", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p3", "p3", "p3"] },
+      { tiles: ["s4", "s4", "s4"] },
+      { tiles: ["p5", "p5"] },
+    ],
+    winTile: "m2",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 3);
+  assert.equal(result.fu, 50);
+  assert.equal(result.score.display, "6400점");
+  assert.equal(result.yaku.some((item) => item.name === "삼암각"), true);
+});
+
 test("pinfu tsumo is 20 fu and includes menzen tsumo", () => {
   const result = calc({
     winMethod: "tsumo",
@@ -486,6 +568,28 @@ test("riichi hand can score ura dora", () => {
   assert.deepEqual(result.yaku.find((item) => item.name === "우라도라"), { name: "우라도라", han: 1 });
 });
 
+test("red dora is not counted again as ura dora", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, none: false },
+    melds: [
+      { tiles: ["m3", "m4", "m5r"] },
+      { tiles: ["m6", "m7", "m8"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s4", "s5", "s6"] },
+      { tiles: ["p5", "p5"] },
+    ],
+    winTile: "s6",
+    doraIndicators: ["p9"],
+    uraIndicators: ["s9"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.yaku.some((item) => item.name === "도라" && item.han === 1), true);
+  assert.equal(result.yaku.some((item) => item.name === "우라도라"), false);
+});
+
 test("open all sequences with no yaku and only dora is rejected", () => {
   const result = calc({
     winMethod: "ron",
@@ -498,7 +602,7 @@ test("open all sequences with no yaku and only dora is rejected", () => {
       { tiles: ["m7", "m8", "m9"], open: true },
       { tiles: ["p6", "p6"] },
     ],
-    winTile: "s9",
+    winTile: "p6",
     doraIndicators: ["m9"],
   });
   assert.equal(result.ok, false);
@@ -719,6 +823,7 @@ test("recent item sanitizer keeps only restorable valid calculations", () => {
     winMethod: "ron",
     roundWind: "east",
     seatWind: "south",
+    lastKanWin: false,
     melds: pinfuRonMelds,
     winTile: "s8",
     doraIndicators: ["east"],

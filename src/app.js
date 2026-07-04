@@ -16,6 +16,7 @@
 } from "./domain.js";
 
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
+const RECENT_STORAGE_MAX_LENGTH = 80_000;
 const app = document.querySelector("#app");
 const TILE_ASSET_ROOT = "./assets/tiles/b2";
 const WIN_TILE_REQUIRED_TEXT = "화료패를 선택해주세요.";
@@ -83,7 +84,20 @@ function loadInitialState() {
 }
 
 function restoreStateFromHash() {
-  if (!location.hash.startsWith("#s=")) return;
+  if (!location.hash.startsWith("#s=")) {
+    if (!location.hash || location.hash === "#") {
+      initialShareError = null;
+      state = normalizeUiState(defaultState());
+      step = 1;
+      selectedTile = null;
+      selectedCandidate = null;
+      picker = null;
+      modal = null;
+      lastSavedRecentKey = null;
+      render();
+    }
+    return;
+  }
   const decoded = decodeShareState(location.hash.slice(3));
   if (!decoded) {
     initialShareError = "공유 링크를 읽을 수 없음";
@@ -144,6 +158,7 @@ function el(tag, options = {}, children = []) {
   if (options.type) node.type = options.type;
   if (options.disabled) node.disabled = true;
   if (options.ariaLabel) node.setAttribute("aria-label", options.ariaLabel);
+  if (options.ariaPressed !== undefined) node.setAttribute("aria-pressed", String(options.ariaPressed));
   if (options.title) node.title = options.title;
   if (tag === "button") attachTapFeedback(node, options.onClick, options.instantClick);
   else if (options.onClick) node.addEventListener("click", options.onClick);
@@ -204,6 +219,7 @@ function render() {
   latestResult = calculate(state);
   app.replaceChildren(nav(), page());
   document.body.append(...renderModal());
+  focusModal();
 }
 
 function nav() {
@@ -234,11 +250,11 @@ function panel(title, children = []) {
 }
 
 function button(label, active, onClick, extra = "") {
-  return el("button", { className: `choice ${extra} ${active ? "active" : ""}`, text: label, onClick });
+  return el("button", { className: `choice ${extra} ${active ? "active" : ""}`, text: label, onClick, ariaPressed: active });
 }
 
 function chip(label, active, onClick, disabled = false) {
-  return el("button", { className: `chip ${active ? "active" : ""}`, text: label, onClick, disabled });
+  return el("button", { className: `chip ${active ? "active" : ""}`, text: label, onClick, disabled, ariaPressed: active });
 }
 
 function pageOne() {
@@ -517,8 +533,8 @@ function candidatePanel() {
           el("div", { className: "candidate-controls" }, [
             el("span", { className: "label", text: "후로여부" }),
             el("div", { className: "candidate-action-row" }, [
-              el("button", { className: "candidate-action", text: "O", onClick: () => addCandidate(selectedCandidate, true) }),
-              el("button", { className: "candidate-action", text: "X", onClick: () => addCandidate(selectedCandidate, false) }),
+              el("button", { className: "candidate-action", text: "O", ariaLabel: "후로로 등록", onClick: () => addCandidate(selectedCandidate, true) }),
+              el("button", { className: "candidate-action", text: "X", ariaLabel: "멘젠으로 등록", onClick: () => addCandidate(selectedCandidate, false) }),
             ]),
           ]),
         ])
@@ -563,8 +579,11 @@ function groupCandidates(candidates) {
 
 function candidateBox(candidate) {
   const active = selectedCandidate && candidateKey(selectedCandidate) === candidateKey(candidate);
+  const label = `${kindLabel(candidate.kind)} ${candidate.tiles.map(tileLabel).join(" ")}`;
   return el("button", {
     className: `candidate-box ${active ? "active" : ""}`,
+    ariaLabel: label,
+    ariaPressed: active,
     onClick: () => {
       if (candidate.kind === "pair") addCandidate(candidate, false);
       else if (closedOnlyInput()) addCandidate(candidate, false);
@@ -650,6 +669,8 @@ function indicatorPanel(title, key) {
       values.map((tile, index) =>
         el("button", {
           className: `slot ${picker?.key === key && picker.index === index ? "active" : ""}`,
+          ariaLabel: tile ? `${title} ${index + 1}: ${tileLabel(tile)}` : `${title} ${index + 1} 선택`,
+          ariaPressed: picker?.key === key && picker.index === index,
           onClick: () => {
             if (tile) {
               const next = [...values];
@@ -683,8 +704,9 @@ function setIndicatorTile(tile, target = picker) {
 }
 
 function kanJudgementText() {
+  const label = kanDoraLabel();
   if (state.situation.chankan) {
-    return { recognized: false, text: "창깡 성립시, 해당 깡으로 인한 도라는 추가되지 않습니다." };
+    return { recognized: false, text: `창깡 성립시, 해당 깡으로 인한 ${label}는 추가되지 않습니다.` };
   }
   if (state.situation.rinshan) {
     if (needsLastKanClosedQuestion()) return null;
@@ -694,15 +716,19 @@ function kanJudgementText() {
     return {
       recognized,
       text: recognized
-        ? "쯔모 직전의 깡으로 인한 도라는 추가해야 합니다."
-      : "쯔모 직전의 깡으로 인한 도라는 추가되지 않습니다.",
+        ? `쯔모 직전의 깡으로 인한 ${label}는 추가해야 합니다.`
+        : `쯔모 직전의 깡으로 인한 ${label}는 추가되지 않습니다.`,
     };
   }
   if (state.lastKanWin !== true) return null;
   if (state.winMethod === "ron") {
-    return { recognized: true, text: "론 직전의 깡으로 인한 도라는 추가해야 합니다." };
+    return { recognized: true, text: `론 직전의 깡으로 인한 ${label}는 추가해야 합니다.` };
   }
   return { recognized: false, text: "깡 직후 쯔모라면 영상개화를 선택해야 합니다." };
+}
+
+function kanDoraLabel() {
+  return state.situation.riichi || state.situation.doubleRiichi ? "도라와 우라도라" : "도라";
 }
 
 function pageFour() {
@@ -876,7 +902,7 @@ function visibleHandErrors() {
   const structureWarnings = handStructureWarnings();
   if (structureWarnings.length) return structureWarnings;
   if (!state.melds.length) return [];
-  if (!isHandComplete()) return [];
+  if (!isHandComplete() && flattenMelds(state.melds).length < 14) return [];
   const errors = handErrors().filter((message) => message !== WIN_TILE_REQUIRED_TEXT);
   return errors;
 }
@@ -1025,12 +1051,16 @@ function saveRecent(result, rerender = true) {
   const itemKey = encodeShareState(item.state);
   const recent = readRecent().filter((entry) => encodeShareState(entry.state) !== itemKey);
   recent.unshift(item);
-  localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
+  } catch {
+    // Private modes, storage quotas, or browser policies can reject localStorage writes.
+  }
   if (rerender) render();
 }
 
 function recentLabel(result, sourceState) {
-  return `${result.score.dealer ? "오야" : "자"} ${sourceState.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} / ${hanFuLabel(result)}`;
+  return `${result.score.dealer ? "오야" : "자"} ${sourceState.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} / ${scoreDetailLabel(result)}`;
 }
 
 function recentItemLabel(item) {
@@ -1041,10 +1071,20 @@ function recentItemLabel(item) {
 
 function readRecent() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    const raw = localStorage.getItem(RECENT_KEY) || "[]";
+    if (raw.length > RECENT_STORAGE_MAX_LENGTH) return [];
+    const parsed = JSON.parse(raw);
     return sanitizeRecentItems(parsed);
   } catch {
     return [];
+  }
+}
+
+function clearRecent() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    // Keep the UI usable even when storage is unavailable.
   }
 }
 
@@ -1097,7 +1137,7 @@ function renderModal() {
       recent.length
         ? el("div", { className: "recent-list" }, recent.map((item) => el("button", { className: "recent-item", text: recentItemLabel(item), onClick: () => restoreRecent(item) })))
         : el("p", { className: "panel-note", text: "저장된 최근계산이 없습니다." }),
-      recent.length ? el("button", { className: "secondary-action recent-clear", text: "전체 삭제", onClick: () => { localStorage.removeItem(RECENT_KEY); render(); } }) : null,
+      recent.length ? el("button", { className: "secondary-action recent-clear", text: "전체 삭제", onClick: () => { clearRecent(); render(); } }) : null,
     ];
   } else if (modal?.type === "alternatives") {
     body = [
@@ -1140,9 +1180,24 @@ function renderModal() {
   }
   return [
     el("section", { className: "modal-backdrop", onClick: close }, [
-      el("div", { className: "sheet", onClick: (event) => event.stopPropagation() }, body),
+      el("div", { className: "sheet", onClick: (event) => event.stopPropagation(), attrs: { role: "dialog", "aria-modal": "true", "aria-label": modalLabel() } }, body),
     ]),
   ];
+}
+
+function modalLabel() {
+  if (modal === "recent") return "최근계산";
+  if (modal?.type === "alternatives") return "동점 해석";
+  if (modal?.type === "fu-details") return "커쯔/깡쯔 세부";
+  if (modal?.type === "restore-error") return "복원 실패";
+  return "공유 링크";
+}
+
+function focusModal() {
+  if (!modal) return;
+  requestAnimationFrame(() => {
+    document.querySelector(".sheet button")?.focus();
+  });
 }
 
 function restoreRecent(item) {

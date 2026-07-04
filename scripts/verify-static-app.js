@@ -41,5 +41,11 @@ const html = await readFile(join(root, "index.html"), "utf8").catch(() => "");
 if (html && !html.includes('type="module"')) {
   throw new Error("index.html must load the app as a module");
 }
+if (html && !html.includes('http-equiv="Content-Security-Policy"')) {
+  throw new Error("index.html must include a meta Content-Security-Policy for GitHub Pages");
+}
+if (html && !html.includes('name="referrer" content="no-referrer"')) {
+  throw new Error("index.html must include a no-referrer policy");
+}
 
 console.log(`static app files verified: ${root}`);
