@@ -1,4 +1,4 @@
-import {
+﻿import {
   ALL_INDICATORS_34,
   ALL_TILES_37,
   calculate,
@@ -17,7 +17,46 @@ import {
 
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
 const app = document.querySelector("#app");
-const TILE_IMAGE_CACHE = new Map();
+const TILE_ASSET_ROOT = "./assets/tiles/regular";
+const TILE_ASSET_FILES = {
+  m1: "Man1.png",
+  m2: "Man2.png",
+  m3: "Man3.png",
+  m4: "Man4.png",
+  m5: "Man5.png",
+  m5r: "Man5-Dora.png",
+  m6: "Man6.png",
+  m7: "Man7.png",
+  m8: "Man8.png",
+  m9: "Man9.png",
+  p1: "Pin1.png",
+  p2: "Pin2.png",
+  p3: "Pin3.png",
+  p4: "Pin4.png",
+  p5: "Pin5.png",
+  p5r: "Pin5-Dora.png",
+  p6: "Pin6.png",
+  p7: "Pin7.png",
+  p8: "Pin8.png",
+  p9: "Pin9.png",
+  s1: "Sou1.png",
+  s2: "Sou2.png",
+  s3: "Sou3.png",
+  s4: "Sou4.png",
+  s5: "Sou5.png",
+  s5r: "Sou5-Dora.png",
+  s6: "Sou6.png",
+  s7: "Sou7.png",
+  s8: "Sou8.png",
+  s9: "Sou9.png",
+  east: "Ton.png",
+  south: "Nan.png",
+  west: "Shaa.png",
+  north: "Pei.png",
+  white: "Haku.png",
+  green: "Hatsu.png",
+  red: "Chun.png",
+};
 
 let initialShareError = null;
 let lastSavedRecentKey = null;
@@ -342,18 +381,22 @@ function tileFace(tile, selected = false) {
   return el("span", { className: `tile ${tile.endsWith("5r") ? "red-five" : ""} ${selected ? "selected" : ""}` }, [
     el("span", { className: "tile-side" }),
     el("span", { className: "tile-front" }, [
-      el("span", { className: "tile-inner" }, [
-        tile === "white"
-          ? null
-          : el("img", {
-              className: "tile-mark",
-              attrs: {
-                src: tileMarkImageSrc(tile),
-                alt: tileLabel(tile),
-                draggable: "false",
-              },
-            }),
-      ]),
+      el("img", {
+        className: "tile-base",
+        attrs: {
+          src: `${TILE_ASSET_ROOT}/Front.png`,
+          alt: "",
+          draggable: "false",
+        },
+      }),
+      el("img", {
+        className: "tile-mark",
+        attrs: {
+          src: tileAssetSrc(tile),
+          alt: tileLabel(tile),
+          draggable: "false",
+        },
+      }),
     ]),
   ]);
 }
@@ -747,100 +790,8 @@ function shortTile(tile) {
   return label.replace("만", "萬").replace("통", "筒").replace("삭", "索").replace("적5", "赤");
 }
 
-function tileMarkImageSrc(tile) {
-  if (TILE_IMAGE_CACHE.has(tile)) return TILE_IMAGE_CACHE.get(tile);
-  const parts = tileImageParts(tile);
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="82" viewBox="0 0 64 82">
-      ${tileMarkSvg(parts)}
-    </svg>
-  `.trim();
-  const uri = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-  TILE_IMAGE_CACHE.set(tile, uri);
-  return uri;
-}
-
-function tileImageParts(tile) {
-  const normalized = tile.endsWith("5r") ? `${tile[0]}5` : tile;
-  const match = /^([mps])([1-9])$/.exec(normalized);
-  if (match) {
-    return {
-      type: "suit",
-      suit: match[1],
-      number: Number(match[2]),
-      red: tile.endsWith("5r"),
-    };
-  }
-  return {
-    type: "honor",
-    label: tileLabel(tile),
-    color: tile === "red" ? "#b34239" : tile === "green" ? "#257353" : "#251f18",
-  };
-}
-
-function tileMarkSvg(parts) {
-  if (parts.type === "honor") {
-    if (parts.label === "백") return "";
-    return `<text x="32" y="53" text-anchor="middle" font-family="serif" font-size="38" font-weight="900" fill="${parts.color}">${escapeSvg(parts.label)}</text>`;
-  }
-  if (parts.suit === "m") return manMarkSvg(parts);
-  if (parts.suit === "p") return pinMarkSvg(parts);
-  return souMarkSvg(parts);
-}
-
-function manMarkSvg(parts) {
-  const fill = parts.red ? "#e21d2b" : "#c43b37";
-  if (parts.red) {
-    return `
-      <text x="32" y="27" text-anchor="middle" font-family="serif" font-size="18" font-weight="900" fill="${fill}">赤</text>
-      <text x="32" y="48" text-anchor="middle" font-family="serif" font-size="24" font-weight="900" fill="${fill}">五</text>
-      <text x="32" y="67" text-anchor="middle" font-family="serif" font-size="19" font-weight="900" fill="${fill}">萬</text>
-    `;
-  }
-  const numerals = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
-  return `
-    <text x="32" y="26" text-anchor="middle" font-family="serif" font-size="25" font-weight="900" fill="#111111">${numerals[parts.number]}</text>
-    <text x="32" y="59" text-anchor="middle" font-family="serif" font-size="31" font-weight="900" fill="${fill}">萬</text>
-  `;
-}
-
-function pinMarkSvg(parts) {
-  const fill = parts.red ? "#e21d2b" : "#11194f";
-  return dotLayout(parts.number)
-    .map(([x, y], index) => {
-      const dotFill = parts.red || index % 2 === 0 ? fill : "#d13b42";
-      return `<circle cx="${32 + x}" cy="${41 + y}" r="5.4" fill="#faf7ef" stroke="#111111" stroke-width="1.2"/><circle cx="${32 + x}" cy="${41 + y}" r="3.35" fill="none" stroke="${dotFill}" stroke-width="1.9"/><circle cx="${32 + x}" cy="${41 + y}" r="1.1" fill="${dotFill}"/>`;
-    })
-    .join("");
-}
-
-function souMarkSvg(parts) {
-  const fill = parts.red ? "#e21d2b" : "#0a6a22";
-  return dotLayout(parts.number)
-    .map(([x, y]) => `<rect x="${29 + x}" y="${32 + y}" width="6.5" height="17" rx="3.2" fill="${fill}" stroke="#034c18" stroke-width=".8"/><circle cx="${32.25 + x}" cy="${35 + y}" r="1.4" fill="#fffaf0" opacity=".85"/><circle cx="${32.25 + x}" cy="${46 + y}" r="1.4" fill="#fffaf0" opacity=".75"/>`)
-    .join("");
-}
-
-function dotLayout(number) {
-  return {
-    1: [[0, 0]],
-    2: [[-7, -8], [7, 8]],
-    3: [[-8, -10], [0, 0], [8, 10]],
-    4: [[-8, -11], [8, -11], [-8, 11], [8, 11]],
-    5: [[-9, -12], [9, -12], [0, 0], [-9, 12], [9, 12]],
-    6: [[-9, -14], [9, -14], [-9, 0], [9, 0], [-9, 14], [9, 14]],
-    7: [[-9, -15], [9, -15], [-9, -3], [9, -3], [0, 8], [-9, 17], [9, 17]],
-    8: [[-9, -17], [9, -17], [-9, -6], [9, -6], [-9, 6], [9, 6], [-9, 17], [9, 17]],
-    9: [[-10, -17], [0, -17], [10, -17], [-10, 0], [0, 0], [10, 0], [-10, 17], [0, 17], [10, 17]],
-  }[number];
-}
-
-function escapeSvg(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function tileAssetSrc(tile) {
+  return `${TILE_ASSET_ROOT}/${TILE_ASSET_FILES[tile]}`;
 }
 
 function quads() {
