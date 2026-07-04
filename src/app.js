@@ -21,6 +21,7 @@ const RECENT_STORAGE_MAX_LENGTH = 80_000;
 const app = document.querySelector("#app");
 const TILE_ASSET_ROOT = "./assets/tiles/b2";
 const WIN_TILE_REQUIRED_TEXT = "화료패를 선택해주세요.";
+const CANDIDATE_KIND_ORDER = ["pair", "sequence", "triplet", "quad"];
 const TILE_ASSET_FILES = {
   m1: "Man1.png",
   m2: "Man2.png",
@@ -547,13 +548,13 @@ function candidatePanel() {
             ]),
           ]),
         ])
-      : el(
+        : el(
           "div",
           { className: "candidate-section" },
-          Object.entries(groups).map(([kind, groupCandidates]) =>
+          CANDIDATE_KIND_ORDER.filter((kind) => groups[kind]?.length).map((kind) =>
             el("div", { className: "candidate-group" }, [
               el("div", { className: "label", text: kindLabel(kind) }),
-              el("div", { className: "candidate-options" }, groupCandidates.map((candidate) => candidateBox(candidate))),
+              el("div", { className: "candidate-options" }, groups[kind].map((candidate) => candidateBox(candidate))),
             ]),
           ),
         ),
