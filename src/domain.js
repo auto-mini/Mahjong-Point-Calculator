@@ -47,6 +47,7 @@ const SHARE_NULL = ".";
 const SHARE_FIELD_SEPARATOR = "~";
 const SHARE_MELD_SEPARATOR = ".";
 const MAX_SHARE_STATE_LENGTH = 4096;
+const MAX_HONBA = 8;
 
 export function normalizeTile(tile) {
   return RED_FIVES.get(tile) || tile;
@@ -604,8 +605,9 @@ function calculateScore({ han, fu, seatWind, winMethod, honba = 0, riichiSticks 
   const dealer = seatWind === "east";
   const limit = limitInfo(han, fu);
   const base = limit.base;
-  const honbaRon = honba * 300;
-  const honbaTsumo = honba * 100;
+  const honbaCount = safeHonba(honba);
+  const honbaRon = honbaCount * 300;
+  const honbaTsumo = honbaCount * 100;
   const sticks = riichiSticks * 1000;
   if (winMethod === "ron") {
     const payment = ROUND_UP(base * (dealer ? 6 : 4)) + honbaRon;
@@ -687,6 +689,10 @@ function safeNonNegativeInteger(value) {
   return Number.isInteger(value) && value >= 0 ? Math.min(value, 99) : 0;
 }
 
+function safeHonba(value) {
+  return Number.isInteger(value) && value >= 0 ? Math.min(value, MAX_HONBA) : 0;
+}
+
 function safeWind(value) {
   return WINDS.includes(value) ? value : "east";
 }
@@ -727,7 +733,7 @@ export function sanitizeStatePayload(payload) {
     winMethod: safeWinMethod(raw.winMethod),
     roundWind: safeWind(raw.roundWind),
     seatWind: safeWind(raw.seatWind),
-    honba: safeNonNegativeInteger(raw.honba),
+    honba: safeHonba(raw.honba),
     riichiSticks: safeNonNegativeInteger(raw.riichiSticks),
     situation: safeSituation(raw.situation),
     melds: safeMelds(raw.melds),
@@ -967,7 +973,7 @@ function encodeCompactShareState(state) {
     encodeWinMethod(state.winMethod),
     encodeWind(state.roundWind),
     encodeWind(state.seatWind),
-    safeNonNegativeInteger(state.honba).toString(36),
+    safeHonba(state.honba).toString(36),
   ].join("");
   return `${SHARE_VERSION_PREFIX}${[
     head,

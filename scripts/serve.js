@@ -13,12 +13,13 @@ const types = new Map([
   [".js", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
   [".png", "image/png"],
+  [".woff2", "font/woff2"],
   [".md", "text/markdown; charset=utf-8"],
 ]);
 const securityHeaders = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
-  "content-security-policy": "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'",
+  "content-security-policy": "default-src 'self'; img-src 'self' data:; font-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'",
 };
 
 async function defaultRoot() {

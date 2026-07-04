@@ -88,4 +88,9 @@ if (html && !html.includes('name="referrer" content="no-referrer"')) {
   throw new Error("index.html must include a no-referrer policy");
 }
 
+const tileLicense = await readFile(join(root, "assets/tiles/LICENSE.md"), "utf8").catch(() => "");
+if (!tileLicense.includes("FluffyStuff/riichi-mahjong-tiles")) {
+  throw new Error("tile license must record the upstream tile source");
+}
+
 console.log(`static app files verified: ${root}`);

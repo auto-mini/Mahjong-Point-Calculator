@@ -506,6 +506,21 @@ test("honba is added to ron payment and total", () => {
   assert.equal(result.score.total, 1600);
 });
 
+test("score calculation clamps honba to the supported UI range", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    honba: 42,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.score.display, "3400점");
+  assert.equal(result.score.total, 3400);
+});
+
 test("ron shanpon does not count the completed triplet toward sanankou", () => {
   const result = calc({
     winMethod: "ron",
@@ -929,6 +944,20 @@ test("share state parser allowlists fields and drops unknown melds", () => {
   assert.equal(decoded.melds[0].open, true);
   assert.equal(decoded.winTile, null);
   assert.deepEqual(decoded.doraIndicators, ["m1", null, "p1", null, null]);
+});
+
+test("share state parser clamps honba to the supported UI range", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    honba: 42,
+    melds: [{ tiles: ["m1", "m2", "m3"] }],
+    winTile: "m3",
+    doraIndicators: ["p1"],
+  }));
+  assert.equal(decoded.honba, 8);
 });
 
 test("share state parser rejects oversized payloads", () => {
