@@ -41,6 +41,12 @@ export const ALL_INDICATORS_34 = [
   ...HONORS,
 ];
 
+const SHARE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const SHARE_VERSION_PREFIX = "2~";
+const SHARE_NULL = ".";
+const SHARE_FIELD_SEPARATOR = "~";
+const SHARE_MELD_SEPARATOR = ".";
+
 export function normalizeTile(tile) {
   return RED_FIVES.get(tile) || tile;
 }
@@ -853,21 +859,106 @@ export function winningTileCandidates(melds) {
 }
 
 export function encodeShareState(state) {
-  const payload = {
-    v: 1,
-    winMethod: state.winMethod,
-    roundWind: state.roundWind,
-    seatWind: state.seatWind,
-    honba: state.honba,
-    situation: state.situation,
-    melds: (state.melds || []).map((meld) => ({ tiles: meld.tiles, open: Boolean(meld.open) })),
-    winTile: state.winTile,
-    lastKanWin: state.lastKanWin,
-    lastKanClosed: state.lastKanClosed,
-    doraIndicators: state.doraIndicators || [],
-    uraIndicators: state.uraIndicators || [],
-  };
-  return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return encodeCompactShareState(sanitizeStatePayload(state));
+}
+
+function encodeCompactShareState(state) {
+  const head = [
+    encodeWinMethod(state.winMethod),
+    encodeWind(state.roundWind),
+    encodeWind(state.seatWind),
+    safeNonNegativeInteger(state.honba).toString(36),
+  ].join("");
+  return `${SHARE_VERSION_PREFIX}${[
+    head,
+    encodeSituation(state.situation).toString(36),
+    encodeMelds(state.melds || []),
+    encodeTile(state.winTile, ALL_TILES_37),
+    `${encodeTriState(state.lastKanWin)}${encodeTriState(state.lastKanClosed)}`,
+    encodeIndicators(state.doraIndicators || []),
+    encodeIndicators(state.uraIndicators || []),
+  ].join(SHARE_FIELD_SEPARATOR)}`;
+}
+
+function encodeWinMethod(value) {
+  return { ron: "1", tsumo: "2" }[value] || "0";
+}
+
+function decodeWinMethod(value) {
+  return { 1: "ron", 2: "tsumo" }[value] || null;
+}
+
+function encodeWind(value) {
+  return String(Math.max(0, WINDS.indexOf(value)));
+}
+
+function decodeWind(value) {
+  return WINDS[Number(value)] || "east";
+}
+
+function encodeSituation(situation = {}) {
+  const keys = ["riichi", "doubleRiichi", "ippatsu", "chankan", "rinshan", "haitei", "houtei"];
+  return keys.reduce((mask, key, index) => situation[key] ? mask | (1 << index) : mask, 0);
+}
+
+function decodeSituation(value) {
+  const mask = Number.parseInt(value || "0", 36);
+  const keys = ["riichi", "doubleRiichi", "ippatsu", "chankan", "rinshan", "haitei", "houtei"];
+  const situation = { ...defaultState().situation, none: !mask };
+  keys.forEach((key, index) => {
+    situation[key] = Boolean(mask & (1 << index));
+  });
+  return situation;
+}
+
+function encodeTile(tile, allowedTiles) {
+  if (!tile) return SHARE_NULL;
+  const index = allowedTiles.indexOf(tile);
+  if (index < 0) return SHARE_NULL;
+  return SHARE_ALPHABET[index];
+}
+
+function decodeTile(value, allowedTiles) {
+  if (!value || value === SHARE_NULL) return null;
+  const index = SHARE_ALPHABET.indexOf(value);
+  return index >= 0 ? allowedTiles[index] || null : null;
+}
+
+function encodeMelds(melds) {
+  return melds
+    .map((meld) => `${meld.open ? "o" : "c"}${meld.tiles.map((tile) => encodeTile(tile, ALL_TILES_37)).join("")}`)
+    .join(SHARE_MELD_SEPARATOR);
+}
+
+function decodeMelds(value) {
+  if (!value) return [];
+  return value.split(SHARE_MELD_SEPARATOR).flatMap((raw) => {
+    const openFlag = raw[0];
+    if (openFlag !== "c" && openFlag !== "o") return [];
+    const tiles = [...raw.slice(1)].map((tile) => decodeTile(tile, ALL_TILES_37));
+    if (tiles.some((tile) => !tile)) return [];
+    return [{ tiles, open: openFlag === "o" }];
+  });
+}
+
+function encodeTriState(value) {
+  if (value === true) return "1";
+  if (value === false) return "0";
+  return SHARE_NULL;
+}
+
+function decodeTriState(value) {
+  if (value === "1") return true;
+  if (value === "0") return false;
+  return null;
+}
+
+function encodeIndicators(values) {
+  return Array.from({ length: 5 }, (_, index) => encodeTile(values[index], ALL_INDICATORS_34)).join("");
+}
+
+function decodeIndicators(value) {
+  return Array.from({ length: 5 }, (_, index) => decodeTile(value?.[index], ALL_INDICATORS_34));
 }
 
 function sameTileCandidateTiles(tile, length) {
@@ -908,6 +999,36 @@ function dedupeCandidates(candidates) {
 }
 
 export function decodeShareState(value) {
+  if (typeof value !== "string") return null;
+  if (value.startsWith(SHARE_VERSION_PREFIX)) return decodeCompactShareState(value);
+  return decodeLegacyShareState(value);
+}
+
+function decodeCompactShareState(value) {
+  try {
+    const [head = "", situation = "0", melds = "", winTile = SHARE_NULL, kan = "", dora = "", ura = ""] = value
+      .slice(SHARE_VERSION_PREFIX.length)
+      .split(SHARE_FIELD_SEPARATOR);
+    if (head.length < 4) throw new Error("Invalid compact share state");
+    return sanitizeStatePayload({
+      winMethod: decodeWinMethod(head[0]),
+      roundWind: decodeWind(head[1]),
+      seatWind: decodeWind(head[2]),
+      honba: Number.parseInt(head.slice(3), 36),
+      situation: decodeSituation(situation),
+      melds: decodeMelds(melds),
+      winTile: decodeTile(winTile, ALL_TILES_37),
+      lastKanWin: decodeTriState(kan[0]),
+      lastKanClosed: decodeTriState(kan[1]),
+      doraIndicators: decodeIndicators(dora),
+      uraIndicators: decodeIndicators(ura),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function decodeLegacyShareState(value) {
   try {
     const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");

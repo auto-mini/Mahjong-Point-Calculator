@@ -516,11 +516,57 @@ test("share state round-trips through URL-safe payload", () => {
     winMethod: "ron",
     roundWind: "east",
     seatWind: "south",
+    honba: 3,
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["p5r", "p6", "p7"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "p5r",
+    lastKanWin: false,
+    doraIndicators: ["p1", null, "s9"],
+    uraIndicators: ["m9", null, "red"],
+  });
+  const encoded = encodeShareState(state);
+  const legacy = payload({
+    v: 1,
+    winMethod: state.winMethod,
+    roundWind: state.roundWind,
+    seatWind: state.seatWind,
+    honba: state.honba,
+    situation: state.situation,
+    melds: state.melds.map((meld) => ({ tiles: meld.tiles, open: meld.open })),
+    winTile: state.winTile,
+    lastKanWin: state.lastKanWin,
+    lastKanClosed: state.lastKanClosed,
+    doraIndicators: state.doraIndicators,
+    uraIndicators: state.uraIndicators,
+  });
+  assert.equal(encoded.startsWith("2~"), true);
+  assert.equal(encoded.length < legacy.length, true);
+  const decoded = decodeShareState(encoded);
+  assert.equal(decoded.winMethod, "ron");
+  assert.equal(decoded.honba, 3);
+  assert.equal(decoded.situation.riichi, true);
+  assert.equal(decoded.situation.ippatsu, true);
+  assert.equal(decoded.melds[0].tiles.join(","), "m1,m2,m3");
+  assert.equal(decoded.melds[1].tiles.join(","), "p5r,p6,p7");
+  assert.equal(decoded.winTile, "p5r");
+  assert.deepEqual(decoded.doraIndicators.slice(0, 3), ["p1", null, "s9"]);
+  assert.deepEqual(decoded.uraIndicators.slice(0, 3), ["m9", null, "red"]);
+});
+
+test("legacy v1 share state still decodes", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
     melds: [{ tiles: ["m1", "m2", "m3"] }],
     winTile: "m3",
     doraIndicators: ["p1"],
-  });
-  const decoded = decodeShareState(encodeShareState(state));
+  }));
   assert.equal(decoded.winMethod, "ron");
   assert.equal(decoded.melds[0].tiles.join(","), "m1,m2,m3");
   assert.equal(decoded.doraIndicators[0], "p1");
