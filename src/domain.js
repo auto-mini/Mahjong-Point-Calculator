@@ -101,6 +101,10 @@ export function validateTiles(tiles) {
     const count = tiles.filter((tile) => tile === red).length;
     if (count > 1) errors.push(`동일 수패 적5 2장 이상: ${tileLabel(red)}이 ${count}장입니다.`);
   }
+  for (const normal of RED_FIVES.values()) {
+    const count = tiles.filter((tile) => tile === normal).length;
+    if (count > 3) errors.push(`동일 수패 일반5 4장 이상: ${tileLabel(normal)}이 ${count}장입니다.`);
+  }
   return errors;
 }
 
@@ -702,10 +706,31 @@ function pushUniqueErrors(errors, additions) {
 function isRecognizedLastKanDora(state) {
   if (state.situation?.chankan) return false;
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
-  if (!quads.length) return false;
-  const lastKanClosed = state.lastKanClosed ?? (quads.length === 1 ? !quads[0].open : !quads.some((meld) => meld.open));
-  if (state.situation?.rinshan) return lastKanClosed;
-  return true;
+  if (state.situation?.rinshan) return resolvedLastKanClosed(state) === true && quads.length > 0;
+  if (state.lastKanWin !== true) return false;
+  if (state.winMethod === "ron") return true;
+  return false;
+}
+
+function inferLastKanClosedFromMelds(melds = []) {
+  const quads = (melds || []).filter((meld) => meld.kind === "quad");
+  if (!quads.length) return null;
+  const hasOpen = quads.some((meld) => meld.open);
+  const hasClosed = quads.some((meld) => !meld.open);
+  if (hasOpen && hasClosed) return null;
+  return hasClosed;
+}
+
+function resolvedLastKanClosed(state) {
+  return inferLastKanClosedFromMelds(state.melds || []) ?? state.lastKanClosed;
+}
+
+function requiredDoraIndicatorCount(state) {
+  const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
+  let recognizedKanDora = quads.length;
+  if (state.situation?.rinshan && resolvedLastKanClosed(state) === false) recognizedKanDora -= 1;
+  if (!state.situation?.rinshan && !state.situation?.chankan && state.winMethod === "ron" && state.lastKanWin === true) recognizedKanDora += 1;
+  return 1 + Math.max(0, recognizedKanDora);
 }
 
 export function validateState(state) {
@@ -725,8 +750,9 @@ export function validateState(state) {
   ]));
   if (!state.doraIndicators?.filter(Boolean).length) errors.push("도라 첫 칸을 입력해주세요.");
   const doraCount = leadingFilledCount(state.doraIndicators || []);
-  if (state.lastKanWin === true && isRecognizedLastKanDora(state) && doraCount < 2) {
-    errors.push("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요.");
+  const requiredDoraCount = requiredDoraIndicatorCount(state);
+  if (doraCount < requiredDoraCount) {
+    errors.push(`도라 표시패를 ${requiredDoraCount}개 이상 입력해주세요.`);
   }
   if (hasMiddleGap(state.doraIndicators || [])) errors.push("도라 중간 칸이 비어 있습니다.");
   if (needsUra) {
@@ -746,6 +772,11 @@ export function validateState(state) {
   if (state.situation?.chankan && state.situation?.doubleRiichi) errors.push("창깡과 더블리치는 동시에 선택할 수 없습니다.");
   if (state.winMethod === "ron" && (state.situation?.haitei || state.situation?.rinshan)) errors.push("해저로월/영상개화는 쯔모 전용입니다.");
   if (state.winMethod === "tsumo" && (state.situation?.houtei || state.situation?.chankan)) errors.push("하저로어/창깡은 론 전용입니다.");
+  const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
+  if (state.situation?.rinshan && !quads.length) errors.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
+  if (state.situation?.rinshan && state.lastKanWin === false) errors.push("영상개화는 깡 직후 화료여야 합니다.");
+  if (state.situation?.rinshan && state.lastKanWin === true && resolvedLastKanClosed(state) === null && quads.length) errors.push("쯔모 직전 깡 종류를 선택해주세요.");
+  if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation?.rinshan) errors.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);
   if (hasOpen && (state.situation?.riichi || state.situation?.doubleRiichi || state.situation?.ippatsu)) {
     errors.push("후로 손패에서는 리치/더블리치/일발을 선택할 수 없습니다.");
@@ -968,10 +999,9 @@ function sameTileCandidateTiles(tile, length) {
   if (!parsed || parsed.number !== 5) return [Array.from({ length }, () => tile)];
   const normal = `${parsed.suit}5`;
   const red = `${parsed.suit}5r`;
-  const candidates = [Array.from({ length }, () => normal)];
-  candidates.push([red, ...Array.from({ length: length - 1 }, () => normal)]);
-  if (tile === red) return candidates.filter((candidate) => candidate.includes(red));
-  return candidates;
+  const withRed = [red, ...Array.from({ length: length - 1 }, () => normal)];
+  if (tile === red || length === 4) return [withRed];
+  return [Array.from({ length }, () => normal), withRed];
 }
 
 function sequenceCandidateTiles(selectedTile, suit, start) {
@@ -981,7 +1011,7 @@ function sequenceCandidateTiles(selectedTile, suit, start) {
     base.map((item) => (item === normalized ? selectedTile : item)),
   ];
   const five = `${suit}5`;
-  if (base.includes(five)) {
+  if (base.includes(five) && normalized !== five) {
     candidates.push(base.map((item) => (item === five ? `${suit}5r` : item)));
   }
   return candidates;

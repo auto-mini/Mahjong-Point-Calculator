@@ -68,6 +68,7 @@ let selectedCandidate = null;
 let picker = null;
 let modal = null;
 let latestResult = null;
+const TAP_ACTIVATION_DELAY_MS = 140;
 
 render();
 window.addEventListener("hashchange", restoreStateFromHash);
@@ -144,8 +145,8 @@ function el(tag, options = {}, children = []) {
   if (options.disabled) node.disabled = true;
   if (options.ariaLabel) node.setAttribute("aria-label", options.ariaLabel);
   if (options.title) node.title = options.title;
-  if (tag === "button") attachTapFeedback(node);
-  if (options.onClick) node.addEventListener("click", options.onClick);
+  if (tag === "button") attachTapFeedback(node, options.onClick, options.instantClick);
+  else if (options.onClick) node.addEventListener("click", options.onClick);
   for (const [name, value] of Object.entries(options.attrs || {})) node.setAttribute(name, value);
   for (const child of Array.isArray(children) ? children : [children]) {
     if (child === null || child === undefined) continue;
@@ -158,22 +159,44 @@ function pairRow(className, left, right, tag = "div") {
   return el(tag, { className, ariaLabel: `${left} ${right}` }, [el("span", { text: `${left} ` }), el("span", { text: right })]);
 }
 
-function attachTapFeedback(node) {
-  const release = () => node.classList.remove("tap-press");
+function attachTapFeedback(node, onClick, instantClick = false) {
+  let releaseTimer = null;
+  const release = () => {
+    window.clearTimeout(releaseTimer);
+    releaseTimer = window.setTimeout(() => node.classList.remove("tap-press"), 130);
+  };
+  const snap = () => {
+    node.classList.remove("tap-snap");
+    void node.offsetWidth;
+    node.classList.add("tap-snap");
+    window.setTimeout(() => node.classList.remove("tap-snap"), 260);
+  };
   node.addEventListener("pointerdown", () => {
     if (node.disabled) return;
+    window.clearTimeout(releaseTimer);
     node.classList.add("tap-press");
   });
   node.addEventListener("pointerup", release);
   node.addEventListener("pointercancel", release);
   node.addEventListener("pointerleave", release);
-  node.addEventListener("click", () => {
+  node.addEventListener("touchstart", () => {
+    if (node.disabled) return;
+    window.clearTimeout(releaseTimer);
+    node.classList.add("tap-press");
+  }, { passive: true });
+  node.addEventListener("touchend", release, { passive: true });
+  node.addEventListener("touchcancel", release, { passive: true });
+  node.addEventListener("click", (event) => {
     if (node.disabled) return;
     release();
-    node.classList.remove("tap-snap");
-    void node.offsetWidth;
-    node.classList.add("tap-snap");
-    window.setTimeout(() => node.classList.remove("tap-snap"), 260);
+    snap();
+    if (!onClick) return;
+    if (instantClick) {
+      onClick(event);
+      return;
+    }
+    event.preventDefault();
+    window.setTimeout(() => onClick(event), TAP_ACTIVATION_DELAY_MS);
   });
 }
 
@@ -186,13 +209,13 @@ function render() {
 function nav() {
   const titles = ["화료/국 정보", "손패 입력", "도라/우라", "결과"];
   const topbar = el("section", { className: "topbar" });
-  topbar.append(step > 1 ? el("button", { className: "back-button", text: "<", onClick: () => goBack() }) : el("span", { className: "back-spacer" }));
+  topbar.append(step > 1 ? el("button", { className: "back-button", text: "<", ariaLabel: "이전 페이지로", onClick: () => goBack() }) : el("span", { className: "back-spacer" }));
   const title = el("div", {}, [
     el("div", { className: "page-kicker", text: `${step}/4` }),
     el("h1", { text: titles[step - 1] }),
   ]);
   topbar.append(title);
-  topbar.append(el("button", { className: "recent-button", text: "최근계산", onClick: () => openRecent() }));
+  topbar.append(el("button", { className: "recent-button", text: "최근계산", ariaLabel: "최근계산 열기", onClick: () => openRecent() }));
   return topbar;
 }
 
@@ -247,6 +270,13 @@ function normalizeUiState(rawState) {
   const next = createStateFromMelds(rawState);
   next.riichiSticks = 0;
   next.situation = normalizeSituationForUi(next.situation, next.winMethod, next.melds);
+  if (next.situation.chankan || next.situation.rinshan) next.lastKanWin = true;
+  if (next.situation.rinshan) {
+    const inferredLastKanClosed = inferLastKanClosedFromMelds(next.melds);
+    if (inferredLastKanClosed !== null) next.lastKanClosed = inferredLastKanClosed;
+  } else {
+    next.lastKanClosed = null;
+  }
   if (!next.situation.riichi && !next.situation.doubleRiichi) next.uraIndicators = [];
   if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds).includes(next.winTile)) next.winTile = null;
   return next;
@@ -517,6 +547,9 @@ function candidateWouldBreakTileCounts(candidate, usedTiles) {
     normalizedCounts.set(tile, (normalizedCounts.get(tile) || 0) + 1);
   }
   if ([...normalizedCounts.values()].some((count) => count > 4)) return true;
+  for (const suit of ["m", "p", "s"]) {
+    if (tiles.filter((tile) => tile === `${suit}5`).length > 3) return true;
+  }
   return ["m5r", "p5r", "s5r"].some((red) => tiles.filter((tile) => tile === red).length > 1);
 }
 
@@ -576,14 +609,17 @@ function pageThree() {
   const needsUra = state.situation.riichi || state.situation.doubleRiichi;
   const shouldAskLastKanClosed = shouldAskLastKanClosedQuestion();
   const kanText = kanJudgementText();
+  const shouldAskLastKanWin = shouldAskLastKanWinQuestion();
   if (!needsUra && picker?.key === "uraIndicators") picker = null;
   const activePicker = picker;
   return el("div", {}, [
-    panel("깡 직후에 화료했나요?", [
-      el("div", { className: "button-grid" }, [
-        button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
-        button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
-      ]),
+    panel(shouldAskLastKanWin ? "깡 직후에 화료했나요?" : "깡도라 판정", [
+      shouldAskLastKanWin
+        ? el("div", { className: "button-grid" }, [
+            button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
+            button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
+          ])
+        : null,
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
       kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text }) : null,
     ]),
@@ -597,7 +633,7 @@ function pageThree() {
 
 function lastKanClosedQuestion() {
   return el("div", { className: "kan-extra" }, [
-    el("div", { className: "label", text: "마지막 깡 종류" }),
+    el("div", { className: "label", text: "쯔모 직전 깡 종류" }),
     el("div", { className: "button-grid" }, [
       button("안깡", state.lastKanClosed === true, () => setState({ lastKanClosed: true }), "primary"),
       button("안깡 아님", state.lastKanClosed === false, () => setState({ lastKanClosed: false })),
@@ -628,7 +664,7 @@ function indicatorPanel(title, key) {
               render();
             }
           },
-        }, tile ? [tileFace(tile)] : [el("span", { className: "slot-plus", text: "+" }), el("span", { className: "slot-index", text: String(index + 1) })]),
+        }, tile ? [tileFace(tile)] : [el("span", { className: "slot-plus", text: "+" })]),
       ),
     ),
   ]);
@@ -647,17 +683,26 @@ function setIndicatorTile(tile, target = picker) {
 }
 
 function kanJudgementText() {
+  if (state.situation.chankan) {
+    return { recognized: false, text: "창깡 성립시, 해당 깡으로 인한 도라는 추가되지 않습니다." };
+  }
+  if (state.situation.rinshan) {
+    if (needsLastKanClosedQuestion()) return null;
+    const lastKanClosed = resolvedLastKanClosed();
+    if (!quads().length || lastKanClosed === null) return null;
+    const recognized = lastKanClosed === true;
+    return {
+      recognized,
+      text: recognized
+        ? "쯔모 직전의 깡으로 인한 도라는 추가해야 합니다."
+      : "쯔모 직전의 깡으로 인한 도라는 추가되지 않습니다.",
+    };
+  }
   if (state.lastKanWin !== true) return null;
-  if (needsLastKanClosedQuestion()) return null;
-  const withUra = state.situation.riichi || state.situation.doubleRiichi;
-  const label = withUra ? "도라와 우라도라" : "도라";
-  const recognized = isLastKanDoraRecognized();
-  return {
-    recognized,
-    text: recognized
-      ? `해당 깡으로 인한 ${label}는 인정됩니다.\n포함하여 입력해주세요.`
-      : `해당 깡으로 인한 ${label}는 인정되지 않습니다.\n제외하고 입력해주세요.`,
-  };
+  if (state.winMethod === "ron") {
+    return { recognized: true, text: "론 직전의 깡으로 인한 도라는 추가해야 합니다." };
+  }
+  return { recognized: false, text: "깡 직후 쯔모라면 영상개화를 선택해야 합니다." };
 }
 
 function pageFour() {
@@ -665,7 +710,7 @@ function pageFour() {
   return el("div", {}, [
     result.ok ? resultView(result) : errorResult(result.errors),
     footer([
-      { label: "공유", onClick: () => shareCurrentState() },
+      { label: "공유", onClick: () => shareCurrentState(), instant: true },
       { label: "다시 계산", primary: true, onClick: () => resetAll() },
     ]),
   ]);
@@ -773,6 +818,7 @@ function footer(actions) {
         text: action.label,
         disabled: action.disabled,
         onClick: action.onClick,
+        instantClick: action.instant,
       }),
     );
   }
@@ -810,7 +856,7 @@ function isHandComplete(melds = state.melds) {
 }
 
 function canStepTwoContinue() {
-  return isHandComplete() && Boolean(state.winTile);
+  return isHandComplete() && Boolean(state.winTile) && handContextErrors().length === 0;
 }
 
 function canStepThreeContinue() {
@@ -821,6 +867,7 @@ function handErrors() {
   const messages = handStructureWarnings();
   if (!state.melds.length) messages.push("손패 미완성: 세트를 입력해주세요.");
   else if (!isHandComplete()) messages.push("손패 미완성 또는 화료 형태 불가: 4몸통+1머리 또는 치또이 형태가 필요합니다.");
+  messages.push(...handContextErrors());
   if (isHandComplete() && !state.winTile) messages.push(WIN_TILE_REQUIRED_TEXT);
   return messages;
 }
@@ -828,10 +875,18 @@ function handErrors() {
 function visibleHandErrors() {
   const structureWarnings = handStructureWarnings();
   if (structureWarnings.length) return structureWarnings;
-  const errors = handErrors().filter((message) => message !== WIN_TILE_REQUIRED_TEXT);
   if (!state.melds.length) return [];
   if (!isHandComplete()) return [];
+  const errors = handErrors().filter((message) => message !== WIN_TILE_REQUIRED_TEXT);
   return errors;
+}
+
+function handContextErrors() {
+  const messages = [];
+  if (isHandComplete() && state.situation.rinshan && !quads().length) {
+    messages.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
+  }
+  return messages;
 }
 
 function handStructureWarnings() {
@@ -849,12 +904,15 @@ function handStructureWarnings() {
 
 function doraValidationErrors() {
   const messages = [];
-  if (state.lastKanWin === null) messages.push("마지막 깡 직후 질문에 응답해주세요.");
-  if (needsLastKanClosedQuestion()) messages.push("마지막 깡 종류를 선택해주세요.");
+  if (shouldAskLastKanWinQuestion() && state.lastKanWin === null) messages.push("마지막 깡 직후 질문에 응답해주세요.");
+  if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation.rinshan) messages.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
+  if (needsLastKanClosedQuestion()) messages.push("쯔모 직전 깡 종류를 선택해주세요.");
   const dora = normalizedSlots(state.doraIndicators);
+  const doraCount = leadingCount(dora);
+  const requiredDoraCount = requiredDoraIndicatorCount();
   if (!dora[0]) messages.push("도라 첫 칸을 입력해주세요.");
-  if (state.lastKanWin === true && isLastKanDoraRecognized() && leadingCount(dora) < 2) {
-    messages.push("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요.");
+  if (doraCount < requiredDoraCount) {
+    messages.push(`도라 표시패를 ${requiredDoraCount}개 이상 입력해주세요.`);
   }
   if (hasMiddleGap(dora)) messages.push("도라 중간 칸이 비어 있습니다.");
   if (state.situation.riichi || state.situation.doubleRiichi) {
@@ -908,18 +966,40 @@ function needsLastKanClosedQuestion() {
   return shouldAskLastKanClosedQuestion() && state.lastKanClosed === null;
 }
 
+function shouldAskLastKanWinQuestion() {
+  return !state.situation.chankan && !state.situation.rinshan;
+}
+
 function shouldAskLastKanClosedQuestion() {
-  const handQuads = quads();
-  return state.lastKanWin === true && handQuads.length >= 2 && handQuads.some((meld) => meld.open) && handQuads.some((meld) => !meld.open);
+  return state.lastKanWin === true && state.situation.rinshan && quads().length > 0 && inferLastKanClosedFromMelds() === null;
 }
 
 function isLastKanDoraRecognized() {
   if (state.situation.chankan) return false;
-  const handQuads = quads();
-  if (!handQuads.length) return false;
-  const lastKanClosed = state.lastKanClosed ?? (handQuads.length === 1 ? !handQuads[0].open : !handQuads.some((meld) => meld.open));
-  if (state.situation.rinshan) return lastKanClosed;
-  return true;
+  if (state.situation.rinshan) return resolvedLastKanClosed() === true && quads().length > 0;
+  if (state.lastKanWin !== true) return false;
+  if (state.winMethod === "ron") return true;
+  return false;
+}
+
+function inferLastKanClosedFromMelds(melds = state.melds) {
+  const handQuads = (melds || []).filter((meld) => meld.kind === "quad");
+  if (!handQuads.length) return null;
+  const hasOpen = handQuads.some((meld) => meld.open);
+  const hasClosed = handQuads.some((meld) => !meld.open);
+  if (hasOpen && hasClosed) return null;
+  return hasClosed;
+}
+
+function resolvedLastKanClosed() {
+  return inferLastKanClosedFromMelds() ?? state.lastKanClosed;
+}
+
+function requiredDoraIndicatorCount() {
+  let recognizedKanDora = quads().length;
+  if (state.situation.rinshan && resolvedLastKanClosed() === false) recognizedKanDora -= 1;
+  if (!state.situation.rinshan && !state.situation.chankan && state.winMethod === "ron" && state.lastKanWin === true) recognizedKanDora += 1;
+  return 1 + Math.max(0, recognizedKanDora);
 }
 
 function kindLabel(kind) {

@@ -48,12 +48,23 @@ test("red five counts as normal dora and red dora", () => {
 test("tile quantity validation catches five of a kind and duplicate red five", () => {
   assert.deepEqual(validateTiles(["m1", "m1", "m1", "m1", "m1"]), ["동일패 5장 이상: 1만이 5장입니다."]);
   assert.deepEqual(validateTiles(["m5r", "m5r"]), ["동일 수패 적5 2장 이상: 적5만이 2장입니다."]);
+  assert.equal(validateTiles(["m5", "m5", "m5", "m5"]).length, 1);
 });
 
 test("candidate melds include red-five variants when a 5 can appear", () => {
   const candidates = candidateMeldsFor("m3").map((candidate) => `${candidate.kind}:${candidate.tiles.join(",")}`);
   assert.equal(candidates.includes("sequence:m3,m4,m5"), true);
   assert.equal(candidates.includes("sequence:m3,m4,m5r"), true);
+});
+
+test("normal five candidates keep the selected physical five", () => {
+  const candidates = candidateMeldsFor("m5").map((candidate) => `${candidate.kind}:${candidate.tiles.join(",")}`);
+  assert.equal(candidates.includes("sequence:m3,m4,m5"), true);
+  assert.equal(candidates.includes("sequence:m3,m4,m5r"), false);
+  assert.equal(candidates.includes("sequence:m4,m5,m6"), true);
+  assert.equal(candidates.includes("sequence:m4,m5r,m6"), false);
+  assert.equal(candidates.includes("quad:m5,m5,m5,m5"), false);
+  assert.equal(candidates.includes("quad:m5r,m5,m5,m5"), true);
 });
 
 test("sequence meld recognition does not depend on tile order", () => {
@@ -105,12 +116,12 @@ test("dora and ura indicators participate in visible tile quantity validation", 
   assert.equal(errors.includes("동일패 5장 이상: 1만이 5장입니다."), true);
 });
 
-test("recognized last kan dora requires a second dora indicator", () => {
+test("own kan dora requires a second dora indicator", () => {
   const base = {
     winMethod: "ron",
     roundWind: "east",
     seatWind: "south",
-    lastKanWin: true,
+    lastKanWin: false,
     melds: [
       { tiles: ["m1", "m1", "m1", "m1"] },
       { tiles: ["p2", "p3", "p4"] },
@@ -124,16 +135,16 @@ test("recognized last kan dora requires a second dora indicator", () => {
     ...base,
     doraIndicators: ["p9"],
   }));
-  assert.equal(errors.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), true);
+  assert.equal(errors.includes("도라 표시패를 2개 이상 입력해주세요."), true);
 
   const fixed = validateState(createStateFromMelds({
     ...base,
     doraIndicators: ["p9", "s9"],
   }));
-  assert.equal(fixed.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), false);
+  assert.equal(fixed.includes("도라 표시패를 2개 이상 입력해주세요."), false);
 });
 
-test("last kan dora judgement without a hand quad matches the UI", () => {
+test("ron after another player's kan still requires the added dora indicator", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
     roundWind: "east",
@@ -143,7 +154,87 @@ test("last kan dora judgement without a hand quad matches the UI", () => {
     winTile: "s8",
     doraIndicators: ["east"],
   }));
-  assert.equal(errors.length, 0);
+  assert.equal(errors.includes("도라 표시패를 2개 이상 입력해주세요."), true);
+});
+
+test("rinshan requires a hand quad and last kan type", () => {
+  const noQuad = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  }));
+  assert.equal(noQuad.includes("영상개화는 손패에 깡쯔가 있어야 합니다."), true);
+
+  const missingType = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    lastKanWin: true,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"], open: false },
+      { tiles: ["p1", "p1", "p1", "p1"], open: true },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["east"],
+  }));
+  assert.equal(missingType.includes("쯔모 직전 깡 종류를 선택해주세요."), true);
+});
+
+test("rinshan added kan dora depends on closed kan answer", () => {
+  const closedBase = {
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    lastKanWin: true,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"], open: false },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["east"],
+  };
+
+  const closedKan = validateState(createStateFromMelds(closedBase));
+  assert.equal(closedKan.includes("도라 표시패를 2개 이상 입력해주세요."), true);
+
+  const openKan = validateState(createStateFromMelds({
+    ...closedBase,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"], open: true },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+  }));
+  assert.equal(openKan.includes("도라 표시패를 2개 이상 입력해주세요."), false);
+});
+
+test("chankan does not add the robbed kan dora indicator", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  }));
+  assert.equal(errors.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), false);
 });
 
 test("inactive ura indicators are ignored by tile quantity validation", () => {
@@ -160,7 +251,7 @@ test("inactive ura indicators are ignored by tile quantity validation", () => {
       { tiles: ["east", "east"] },
     ],
     winTile: "east",
-    doraIndicators: ["p9"],
+    doraIndicators: ["p9", "s9"],
     uraIndicators: ["m1"],
   }));
   assert.equal(errors.length, 0);
@@ -445,7 +536,7 @@ test("3 han 70 fu is labelled as mangan", () => {
       { tiles: ["m5", "m5"] },
     ],
     winTile: "m5",
-    doraIndicators: ["m2"],
+    doraIndicators: ["m2", "p2"],
   });
   assert.equal(result.ok, true);
   assert.equal(result.han, 3);
