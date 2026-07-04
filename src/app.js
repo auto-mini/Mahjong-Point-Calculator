@@ -610,6 +610,7 @@ function candidateKey(candidate) {
 
 function addCandidate(candidate, open) {
   if (!candidate || candidateWouldBreakTileCounts(candidate, flattenMelds(state.melds))) return;
+  if (!selectedTile || !candidate.tiles.includes(selectedTile)) return;
   if (state.melds.length >= 7) return;
   const meld = createMeld(candidate.tiles, open);
   if (meld.kind === "unknown") return;
