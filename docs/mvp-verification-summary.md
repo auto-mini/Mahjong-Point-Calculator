@@ -19,22 +19,20 @@
 ## 기술 스택
 
 - 외부 의존성 없는 정적 HTML/CSS/ES module.
-- 실행: `node scripts/serve.js`
-- 테스트: `node --test tests/domain.test.js`
-- 빌드 검증: `node scripts/verify-static-app.js`
+- 실행: `scripts/run.ps1 preview`
+- 테스트: `scripts/run.ps1 test`
+- 빌드 검증: `scripts/run.ps1 build`
 
 ## 검증 결과
 
 통과한 명령:
 
-- `node --test tests/domain.test.js`
-  - 24개 테스트 통과
-- `node scripts/verify-static-app.js`
+- `scripts/run.ps1 test`
+  - 57개 테스트 통과
+- `scripts/run.ps1 verify`
   - 정적 앱 파일과 module script 확인 통과
-- `node --check src/domain.js`
-- `node --check src/app.js`
-- `node --check scripts/serve.js`
-- `node --check scripts/verify-static-app.js`
+- `scripts/run.ps1 build`
+  - `dist/` 생성과 정적 산출물 검증 통과
 
 ## 대표 테스트 범위
 
@@ -69,7 +67,7 @@
 기준:
 
 - viewport: 390 x 844
-- URL: `http://127.0.0.1:4173`
+- URL: `http://127.0.0.1:4173` 및 `https://auto-mini.github.io/Mahjong-Point-Calculator/`
 
 확인:
 
