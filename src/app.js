@@ -154,6 +154,10 @@ function el(tag, options = {}, children = []) {
   return node;
 }
 
+function pairRow(className, left, right, tag = "div") {
+  return el(tag, { className, ariaLabel: `${left} ${right}` }, [el("span", { text: left }), el("span", { text: right })]);
+}
+
 function attachTapFeedback(node) {
   const release = () => node.classList.remove("tap-press");
   node.addEventListener("pointerdown", () => {
@@ -670,13 +674,13 @@ function pageFour() {
 function resultView(result) {
   autoSaveRecent(result);
   return el("div", {}, [
-    el("section", { className: "result-card" }, [
+    el("section", { className: "result-card", ariaLabel: `최종 결과 ${result.score.dealer ? "오야" : "자"} ${state.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} ${scoreDetailLabel(result)}` }, [
       el("div", { className: "result-role", text: `${result.score.dealer ? "오야" : "자"} ${state.winMethod === "ron" ? "론" : "쯔모"}` }),
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
       el("div", { className: "subscore", text: scoreDetailLabel(result) }),
     ]),
     panel("역 목록", [
-      el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
+      el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => pairRow("result-line", item.name, `${item.han}판`))),
       result.alternatives.length ? el("button", { className: "secondary-action", text: "동점 해석 보기", onClick: () => openAlternatives(result.alternatives) }) : null,
     ]),
     panel("부수 breakdown", [
@@ -690,7 +694,7 @@ function resultView(result) {
 
 function paymentPanel(result) {
   return el("section", { className: "panel payment-panel" }, [
-    el("div", { className: "payment-row" }, [
+    el("div", { className: "payment-row", ariaLabel: `지불 ${paymentDisplay(result.score)}` }, [
       el("h2", { text: "지불" }),
       el("strong", { className: "payment-amount", text: paymentDisplay(result.score) }),
     ]),
@@ -707,6 +711,7 @@ function fuBreakdownRows(result) {
       if (!meldSummaryAdded) {
         rows.push(el("button", {
           className: "result-line result-line-button",
+          ariaLabel: `커쯔/깡쯔 +${meldTotal}`,
           onClick: () => openFuDetails(meldLines),
           title: "커쯔/깡쯔 세부 부수 보기",
         }, [el("span", { text: "커쯔/깡쯔" }), el("span", { text: `+${meldTotal}` })]));
@@ -714,9 +719,9 @@ function fuBreakdownRows(result) {
       }
       continue;
     }
-    rows.push(el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })]));
+    rows.push(pairRow("result-line", line.name, `+${line.fu}`));
   }
-  rows.push(el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]));
+  rows.push(el("div", { className: "result-line", ariaLabel: `최종 올림 ${result.rawFu}부 -> ${result.fu}부` }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]));
   return rows;
 }
 
@@ -1023,7 +1028,7 @@ function renderModal() {
       el("p", { className: "panel-note", text: "현재 결과와 총점/판수가 같은 다른 자동분해 후보입니다. 점수는 바뀌지 않고, 아래 역 구성이 후보별 차이입니다." }),
       el("div", { className: "recent-list" }, modal.alternatives.map((item, index) =>
         el("div", { className: "recent-item alternative-item" }, [
-          el("strong", { text: `후보 ${index + 1} · ${totalScoreDisplay(item.score)} / ${scoreDetailLabel(item)}` }),
+          el("strong", { text: `후보 ${index + 1} · ${totalScoreDisplay(item.score)} / ${scoreDetailLabel(item)}`, ariaLabel: `후보 ${index + 1} ${totalScoreDisplay(item.score)} ${scoreDetailLabel(item)}` }),
           el("span", { className: "alternative-yaku", text: yakuSummary(item.yaku) }),
         ]),
       )),
@@ -1034,7 +1039,7 @@ function renderModal() {
         el("h2", { text: "커쯔/깡쯔 세부" }),
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
-      el("div", { className: "result-lines" }, modal.lines.map((line) => el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })]))),
+      el("div", { className: "result-lines" }, modal.lines.map((line) => pairRow("result-line", line.name, `+${line.fu}`))),
     ];
   } else if (modal?.type === "restore-error") {
     body = [
