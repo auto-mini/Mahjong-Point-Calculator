@@ -18,6 +18,7 @@
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
 const app = document.querySelector("#app");
 const TILE_ASSET_ROOT = "./assets/tiles/b2";
+const WIN_TILE_REQUIRED_TEXT = "화료패를 선택해주세요.";
 const TILE_ASSET_FILES = {
   m1: "Man1.png",
   m2: "Man2.png",
@@ -311,11 +312,15 @@ function pageTwo() {
   const winHighlight = { used: false };
   return el("div", {}, [
     panel("현재 손패", null, [
-      state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index, winHighlight))) : el("p", { className: "panel-note", text: "아직 입력된 세트가 없습니다." }),
-      el("p", { className: "panel-note", text: `현재 ${flattenMelds(state.melds).length}장 / ${complete ? "완성 후보 있음" : "미완성"}` }),
+      state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index, winHighlight))) : null,
+      el("p", { className: "panel-note", text: `현재 ${flattenMelds(state.melds).length}장 / ${complete ? "완성가능" : "미완성"}` }),
+      el("div", { className: "hand-actions" }, [
+        el("button", { className: "secondary-action hand-reset", text: "전체 초기화", disabled: !state.melds.length, onClick: () => resetHand() }),
+      ]),
     ]),
     complete
       ? panel("화료패", null, [
+          !state.winTile ? el("p", { className: "panel-note win-note", text: WIN_TILE_REQUIRED_TEXT }) : null,
           el("div", { className: "win-candidates" }, winningTileCandidates(state.melds).map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
@@ -336,16 +341,13 @@ function pageTwo() {
       : null,
     selectedTile && !complete ? candidatePanel() : null,
     errors.length ? panel("확인 필요", null, errors.map((message) => el("div", { className: "alert", text: message }))) : null,
-    footer([
-      { label: "전체 초기화", onClick: () => resetHand() },
-      { label: "도라 입력으로", primary: true, disabled: !canStepTwoContinue(), onClick: () => goNext() },
-    ]),
+    footer([{ label: "도라 입력으로", primary: true, disabled: !canStepTwoContinue(), onClick: () => goNext() }]),
   ]);
 }
 
 function meldBox(meld, index, winHighlight) {
   return el("div", { className: "meld-box" }, [
-    el("button", { className: "meld-remove", text: "x", onClick: () => removeMeld(index), ariaLabel: "세트 삭제" }),
+    el("button", { className: "meld-remove", text: "×", onClick: () => removeMeld(index), ariaLabel: "세트 삭제" }),
     tileRow(meld.tiles, state.winTile, winHighlight),
     el("div", { className: "meld-kind", text: `${kindLabel(meld.kind)}${meld.open ? " / 후로" : ""}` }),
   ]);
@@ -573,7 +575,7 @@ function indicatorPanel(title, note, key, disabled) {
               render();
             }
           },
-        }, tile ? [tileFace(tile), el("span", { text: String(index + 1) })] : [el("span", { className: "slot-plus", text: "+" }), el("span", { text: String(index + 1) })]),
+        }, tile ? [tileFace(tile), el("span", { className: "slot-index", text: String(index + 1) })] : [el("span", { className: "slot-plus", text: "+" }), el("span", { className: "slot-index", text: String(index + 1) })]),
       ),
     ),
   ]);
@@ -600,8 +602,8 @@ function kanJudgementText() {
   return {
     recognized,
     text: recognized
-      ? `해당 깡으로 인한 ${label}는 인정됩니다. 포함하여 입력해주세요.`
-      : `해당 깡으로 인한 ${label}는 인정되지 않습니다. 제외하고 입력해주세요.`,
+      ? `해당 깡으로 인한 ${label}는 인정됩니다.\n포함하여 입력해주세요.`
+      : `해당 깡으로 인한 ${label}는 인정되지 않습니다.\n제외하고 입력해주세요.`,
   };
 }
 
@@ -620,7 +622,7 @@ function resultView(result) {
   autoSaveRecent(result);
   return el("div", {}, [
     el("section", { className: "result-card" }, [
-      el("div", { className: "result-role", text: result.score.dealer ? "오야" : "자" }),
+      el("div", { className: "result-role", text: `${result.score.dealer ? "오야" : "자"} ${state.winMethod === "ron" ? "론" : "쯔모"}` }),
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
       el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
     ]),
@@ -748,14 +750,14 @@ function handErrors() {
   const messages = handStructureWarnings();
   if (!state.melds.length) messages.push("손패 미완성: 세트를 입력해주세요.");
   else if (!isHandComplete()) messages.push("손패 미완성 또는 화료 형태 불가: 4몸통+1머리 또는 치또이 형태가 필요합니다.");
-  if (isHandComplete() && !state.winTile) messages.push("화료패를 선택해주세요.");
+  if (isHandComplete() && !state.winTile) messages.push(WIN_TILE_REQUIRED_TEXT);
   return messages;
 }
 
 function visibleHandErrors() {
   const structureWarnings = handStructureWarnings();
   if (structureWarnings.length) return structureWarnings;
-  const errors = handErrors();
+  const errors = handErrors().filter((message) => message !== WIN_TILE_REQUIRED_TEXT);
   if (!state.melds.length) return [];
   if (!isHandComplete()) return [];
   return errors;
