@@ -126,24 +126,23 @@ function meldKind(tiles) {
   if (normalized.length === 4 && normalized.every((tile) => tile === normalized[0])) return "quad";
   if (normalized.length === 3) {
     const parsed = normalized.map(parseSuit);
-    if (
-      parsed.every(Boolean) &&
-      parsed.every((item) => item.suit === parsed[0].suit) &&
-      parsed.map((item) => item.number).sort((a, b) => a - b).join(",") ===
-        [parsed[0].number, parsed[0].number + 1, parsed[0].number + 2].join(",")
-    ) {
-      return "sequence";
+    if (parsed.every(Boolean) && parsed.every((item) => item.suit === parsed[0].suit)) {
+      const numbers = parsed.map((item) => item.number).sort((a, b) => a - b);
+      if (numbers.join(",") === [numbers[0], numbers[0] + 1, numbers[0] + 2].join(",")) {
+        return "sequence";
+      }
     }
   }
   return "unknown";
 }
 
 export function createMeld(tiles, open = false) {
+  const kind = meldKind(tiles);
   return {
     tiles: [...tiles],
     normalizedTiles: tiles.map(normalizeTile),
-    kind: meldKind(tiles),
-    open: Boolean(open),
+    kind,
+    open: kind !== "pair" && Boolean(open),
   };
 }
 
@@ -366,7 +365,7 @@ function hasSameSequenceSet(shape, requiredCopies) {
   return [...counts.values()].filter((count) => count >= 2).length >= requiredCopies;
 }
 
-function detectYakuman(shape) {
+function detectYakuman(shape, state) {
   const tiles = handTilesFromShape(shape);
   if (tiles.every(isHonor)) return "자일색";
   if (tiles.every(isGreen)) return "녹일색";
@@ -381,7 +380,7 @@ function detectYakuman(shape) {
       return "소사희";
     }
     if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) return "사깡쯔";
-    if (triplets.length === 4 && triplets.every((meld) => !meld.open)) return "사암각";
+    if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state))) return "사암각";
   }
   return null;
 }
@@ -544,7 +543,8 @@ function limitInfo(han, fu) {
   if (han >= 6) return { name: "하네만", base: 3000 };
   if (han >= 5) return { name: "만관", base: 2000 };
   const base = fu * 2 ** (han + 2);
-  return { name: null, base: Math.min(base, 2000) };
+  if (base >= 2000) return { name: "만관", base: 2000 };
+  return { name: null, base };
 }
 
 function calculateScore({ han, fu, seatWind, winMethod, honba = 0, riichiSticks = 0 }) {
@@ -695,7 +695,7 @@ function pushUniqueErrors(errors, additions) {
 function isRecognizedLastKanDora(state) {
   if (state.situation?.chankan) return false;
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
-  if (!quads.length) return true;
+  if (!quads.length) return false;
   const lastKanClosed = state.lastKanClosed ?? (quads.length === 1 ? !quads[0].open : !quads.some((meld) => meld.open));
   if (state.situation?.rinshan) return lastKanClosed;
   return true;
@@ -709,11 +709,12 @@ export function validateState(state) {
   const tiles = flattenMelds(state.melds || []);
   const normalizedTiles = tiles.map(normalizeTile);
   if (state.winTile && !normalizedTiles.includes(normalizeTile(state.winTile))) errors.push("화료패가 최종 손패에 없습니다.");
+  const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   pushUniqueErrors(errors, validateTiles(tiles));
   pushUniqueErrors(errors, validateTiles([
     ...tiles,
     ...(state.doraIndicators || []).filter(Boolean),
-    ...(state.uraIndicators || []).filter(Boolean),
+    ...(needsUra ? (state.uraIndicators || []).filter(Boolean) : []),
   ]));
   if (!state.doraIndicators?.filter(Boolean).length) errors.push("도라 첫 칸을 입력해주세요.");
   const doraCount = leadingFilledCount(state.doraIndicators || []);
@@ -721,7 +722,6 @@ export function validateState(state) {
     errors.push("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요.");
   }
   if (hasMiddleGap(state.doraIndicators || [])) errors.push("도라 중간 칸이 비어 있습니다.");
-  const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   if (needsUra) {
     if (hasMiddleGap(state.uraIndicators || [])) errors.push("우라도라 중간 칸이 비어 있습니다.");
     const uraCount = leadingFilledCount(state.uraIndicators || []);
@@ -772,7 +772,7 @@ export function calculate(state) {
 
   const results = [];
   for (const shape of shapes) {
-    const yakuman = detectYakuman(shape);
+    const yakuman = detectYakuman(shape, state);
     if (yakuman) return { ok: false, errors: [`역만 손패입니다. 부수 계산 대상이 아닙니다. (${yakuman})`] };
     const baseYaku = detectYaku(shape, state);
     const handTiles = flattenMelds(state.melds || []);

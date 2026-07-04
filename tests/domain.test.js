@@ -5,6 +5,7 @@ import {
   calculate,
   candidateMeldsFor,
   countDora,
+  createMeld,
   createStateFromMelds,
   nextDora,
   sanitizeRecentItems,
@@ -53,6 +54,14 @@ test("candidate melds include red-five variants when a 5 can appear", () => {
   const candidates = candidateMeldsFor("m3").map((candidate) => `${candidate.kind}:${candidate.tiles.join(",")}`);
   assert.equal(candidates.includes("sequence:m3,m4,m5"), true);
   assert.equal(candidates.includes("sequence:m3,m4,m5r"), true);
+});
+
+test("sequence meld recognition does not depend on tile order", () => {
+  assert.equal(createMeld(["m2", "m1", "m3"]).kind, "sequence");
+});
+
+test("pairs cannot be marked open by restored or shared state", () => {
+  assert.equal(createMeld(["m1", "m1"], true).open, false);
 });
 
 test("winning tile candidates keep red five separate from normal five", () => {
@@ -122,6 +131,39 @@ test("recognized last kan dora requires a second dora indicator", () => {
     doraIndicators: ["p9", "s9"],
   }));
   assert.equal(fixed.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), false);
+});
+
+test("last kan dora judgement without a hand quad matches the UI", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  }));
+  assert.equal(errors.length, 0);
+});
+
+test("inactive ura indicators are ignored by tile quantity validation", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: false,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["p9"],
+    uraIndicators: ["m1"],
+  }));
+  assert.equal(errors.length, 0);
 });
 
 test("chankan does not require a sequence wait", () => {
@@ -211,6 +253,26 @@ test("tsumo shanpon keeps closed triplets for sanankou", () => {
     doraIndicators: ["p9"],
   });
   assert.equal(result.ok, true);
+  assert.equal(result.yaku.some((item) => item.name === "삼암각"), true);
+});
+
+test("ron completing one of four closed triplets is not treated as suuankou", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2"] },
+      { tiles: ["p3", "p3", "p3"] },
+      { tiles: ["s4", "s4", "s4"] },
+      { tiles: ["m6", "m6", "m6"] },
+      { tiles: ["p5", "p5"] },
+    ],
+    winTile: "m2",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.yaku.some((item) => item.name === "또이또이"), true);
   assert.equal(result.yaku.some((item) => item.name === "삼암각"), true);
 });
 
@@ -348,6 +410,28 @@ test("30 fu 4 han is not rounded up to mangan", () => {
   assert.equal(result.fu, 30);
   assert.equal(result.score.limitName, null);
   assert.equal(result.score.display, "7700점");
+});
+
+test("3 han 70 fu is labelled as mangan", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["green", "green", "green"] },
+      { tiles: ["m1", "m1", "m1", "m1"] },
+      { tiles: ["p9", "p9", "p9"], open: true },
+      { tiles: ["s1", "s1", "s1"], open: true },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "m5",
+    doraIndicators: ["m2"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 3);
+  assert.equal(result.fu, 70);
+  assert.equal(result.score.limitName, "만관");
+  assert.equal(result.score.display, "8000점");
 });
 
 test("5 han result hides fu and uses mangan limit", () => {

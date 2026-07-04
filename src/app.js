@@ -222,6 +222,7 @@ function normalizeUiState(rawState) {
   const next = createStateFromMelds(rawState);
   next.riichiSticks = 0;
   next.situation = normalizeSituationForUi(next.situation, next.winMethod, next.melds);
+  if (!next.situation.riichi && !next.situation.doubleRiichi) next.uraIndicators = [];
   if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds).includes(next.winTile)) next.winTile = null;
   return next;
 }
@@ -709,7 +710,7 @@ function paymentDisplay(score) {
 }
 
 function hanFuLabel(result) {
-  return result.han >= 5 ? `${result.han}판` : `${result.han}판 ${result.fu}부`;
+  return result.score.limitName ? `${result.han}판` : `${result.han}판 ${result.fu}부`;
 }
 
 function errorResult(errors) {
