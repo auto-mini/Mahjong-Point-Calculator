@@ -193,6 +193,148 @@
         transform: translateY(-3px) scale(1.04);
         filter: drop-shadow(0 5px 4px rgba(63, 38, 18, 0.2));
       }
+
+      .magnetic .demo-button,
+      .magnetic .tile-button {
+        transition: transform 160ms cubic-bezier(.2, .85, .18, 1.25), box-shadow 160ms ease, background 160ms ease;
+      }
+
+      .magnetic .tile-button {
+        position: relative;
+        border-radius: 10px;
+      }
+
+      .magnetic .is-clicked {
+        transform: translateY(-2px) scale(1.025);
+        box-shadow: 0 9px 16px rgba(63, 38, 18, 0.2);
+      }
+
+      .magnetic .is-clicked.demo-button {
+        background: #fff7eb;
+      }
+
+      .halo .demo-button,
+      .halo .tile-button {
+        transition: box-shadow 130ms ease, transform 130ms ease;
+      }
+
+      .halo .tile-button {
+        position: relative;
+        border-radius: 10px;
+      }
+
+      .halo .is-clicked {
+        transform: scale(1.01);
+        animation: haloPulse 460ms ease-out;
+      }
+
+      @keyframes haloPulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(39, 63, 53, 0.24);
+        }
+        60% {
+          box-shadow: 0 0 0 8px rgba(39, 63, 53, 0.1);
+        }
+        100% {
+          box-shadow: 0 0 0 12px rgba(39, 63, 53, 0);
+        }
+      }
+
+      .sheen .demo-button,
+      .sheen .tile-button {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .sheen .demo-button::before,
+      .sheen .tile-button::before {
+        content: "";
+        position: absolute;
+        z-index: 1;
+        top: -45%;
+        left: -70%;
+        width: 42%;
+        height: 190%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+        transform: rotate(18deg);
+        opacity: 0;
+      }
+
+      .sheen .is-clicked::before {
+        animation: sheenSweep 520ms ease;
+      }
+
+      @keyframes sheenSweep {
+        0% {
+          left: -70%;
+          opacity: 0;
+        }
+        18% {
+          opacity: 0.85;
+        }
+        100% {
+          left: 130%;
+          opacity: 0;
+        }
+      }
+
+      .soft-fill .demo-button,
+      .soft-fill .tile-button {
+        transition: background 170ms ease, color 170ms ease, transform 90ms ease;
+      }
+
+      .soft-fill .tile-button {
+        border-radius: 10px;
+      }
+
+      .soft-fill .is-clicked {
+        background: rgba(39, 63, 53, 0.12);
+        color: var(--deep);
+        transform: scale(0.985);
+      }
+
+      .snap .demo-button,
+      .snap .tile-demo {
+        transition: transform 180ms cubic-bezier(.16, 1.25, .32, 1);
+      }
+
+      .snap .is-clicked.demo-button {
+        animation: snapRotate 260ms ease;
+      }
+
+      .snap .is-clicked .tile-demo,
+      .snap .tile-button:active .tile-demo {
+        transform: rotate(-2deg) translateY(-2px) scale(1.035);
+      }
+
+      @keyframes snapRotate {
+        0% {
+          transform: scale(1);
+        }
+        45% {
+          transform: scale(0.975) rotate(-0.5deg);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .depth .demo-button,
+      .depth .tile-button {
+        transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+        box-shadow: 0 3px 0 #d4b58b;
+      }
+
+      .depth .tile-button {
+        border-radius: 10px;
+      }
+
+      .depth .is-clicked {
+        transform: translateY(3px);
+        box-shadow: 0 0 0 #d4b58b;
+        filter: saturate(1.04);
+      }
     </style>
   </head>
   <body>
@@ -233,6 +375,60 @@
         <div class="demo-row">
           <button class="demo-button">예</button>
           <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Ton.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate magnetic">
+        <h2>E. 마그네틱 리프트</h2>
+        <p>선택한 컨트롤이 살짝 떠오르며 붙는 느낌입니다. 요즘 앱형 카드/칩에 잘 맞습니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">리치</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Hatsu.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate halo">
+        <h2>F. 소프트 Halo</h2>
+        <p>선택 지점 주변으로 아주 짧은 링이 퍼집니다. ripple보다 덜 안드로이드스럽습니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">창깡</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Chun.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate sheen">
+        <h2>G. 글래스 Sheen</h2>
+        <p>짧은 하이라이트가 지나갑니다. 트렌디하지만 과하면 장난감처럼 보일 수 있습니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">도라 입력</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Pin9.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate soft-fill">
+        <h2>H. 소프트 Fill</h2>
+        <p>짧게 면색이 차오르는 느낌만 줍니다. 계산기 앱에는 가장 무난한 현대식 피드백입니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">해당없음</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Man5-Dora.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate snap">
+        <h2>I. 스냅 탄성</h2>
+        <p>아주 짧은 탄성으로 선택감만 줍니다. 패 버튼에는 손맛이 있고 텍스트 버튼에는 과하지 않습니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">결과 보기</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Sou3.png" alt=""></button>
+        </div>
+      </section>
+
+      <section class="candidate depth">
+        <h2>J. 얕은 물리 버튼</h2>
+        <p>그림자가 사라지며 눌립니다. 실용적이고 명확하지만 UI 전체가 버튼감 있게 보입니다.</p>
+        <div class="demo-row">
+          <button class="demo-button">전체 초기화</button>
+          <button class="tile-button" aria-label="패 효과 보기"><img class="tile-demo" src="../assets/tiles/b2/Nan.png" alt=""></button>
         </div>
       </section>
     </main>
