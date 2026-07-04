@@ -102,6 +102,7 @@ function el(tag, options = {}, children = []) {
   if (options.disabled) node.disabled = true;
   if (options.ariaLabel) node.setAttribute("aria-label", options.ariaLabel);
   if (options.title) node.title = options.title;
+  if (tag === "button") attachTapFeedback(node);
   if (options.onClick) node.addEventListener("click", options.onClick);
   for (const [name, value] of Object.entries(options.attrs || {})) node.setAttribute(name, value);
   for (const child of Array.isArray(children) ? children : [children]) {
@@ -109,6 +110,25 @@ function el(tag, options = {}, children = []) {
     node.append(child);
   }
   return node;
+}
+
+function attachTapFeedback(node) {
+  const release = () => node.classList.remove("tap-press");
+  node.addEventListener("pointerdown", () => {
+    if (node.disabled) return;
+    node.classList.add("tap-press");
+  });
+  node.addEventListener("pointerup", release);
+  node.addEventListener("pointercancel", release);
+  node.addEventListener("pointerleave", release);
+  node.addEventListener("click", () => {
+    if (node.disabled) return;
+    release();
+    node.classList.remove("tap-snap");
+    void node.offsetWidth;
+    node.classList.add("tap-snap");
+    window.setTimeout(() => node.classList.remove("tap-snap"), 260);
+  });
 }
 
 function render() {

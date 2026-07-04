@@ -37,6 +37,80 @@ button {
   touch-action: manipulation;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .back-button,
+  .recent-button,
+  .icon-button,
+  .choice,
+  .chip,
+  .footer-button,
+  .secondary-action,
+  .candidate-action,
+  .candidate-box,
+  .slot,
+  .meld-remove {
+    transition:
+      transform 180ms cubic-bezier(.16, 1.25, .32, 1),
+      filter 140ms ease,
+      box-shadow 140ms ease;
+  }
+
+  .tile-button .tile-image,
+  .candidate-box .tile-image,
+  .slot .tile-image {
+    transition:
+      transform 180ms cubic-bezier(.16, 1.25, .32, 1),
+      filter 140ms ease;
+  }
+
+  .back-button.tap-press,
+  .recent-button.tap-press,
+  .icon-button.tap-press,
+  .choice.tap-press,
+  .chip.tap-press,
+  .footer-button.tap-press,
+  .secondary-action.tap-press,
+  .candidate-action.tap-press,
+  .candidate-box.tap-press,
+  .slot.tap-press,
+  .meld-remove.tap-press,
+  .back-button.tap-snap,
+  .recent-button.tap-snap,
+  .icon-button.tap-snap,
+  .choice.tap-snap,
+  .chip.tap-snap,
+  .footer-button.tap-snap,
+  .secondary-action.tap-snap,
+  .candidate-action.tap-snap,
+  .candidate-box.tap-snap,
+  .slot.tap-snap,
+  .meld-remove.tap-snap {
+    animation: snapPress 260ms ease;
+  }
+
+  .tile-button.tap-press .tile-image,
+  .tile-button.tap-snap .tile-image,
+  .candidate-box.tap-press .tile-image,
+  .candidate-box.tap-snap .tile-image,
+  .slot.tap-press .tile-image,
+  .slot.tap-snap .tile-image {
+    transform: rotate(-2deg) translateY(-2px) scale(1.035);
+    filter: drop-shadow(0 4px 4px rgba(63, 38, 18, 0.18));
+  }
+
+  @keyframes snapPress {
+    0% {
+      transform: scale(1);
+    }
+    45% {
+      transform: scale(0.975) rotate(-0.5deg);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+}
+
 .app-shell {
   width: min(100%, 430px);
   min-height: 100vh;
