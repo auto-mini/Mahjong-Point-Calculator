@@ -62,7 +62,7 @@ const TILE_ASSET_FILES = {
 let initialShareError = null;
 let lastSavedRecentKey = null;
 let state = loadInitialState();
-let step = state.winMethod ? 2 : 1;
+let step = stepForLoadedState(state);
 let selectedTile = null;
 let selectedCandidate = null;
 let picker = null;
@@ -100,7 +100,7 @@ function restoreStateFromHash() {
   if (encodeShareState(next) === encodeShareState(state)) return;
   initialShareError = null;
   state = next;
-  step = state.winMethod ? 2 : 1;
+  step = stepForLoadedState(state);
   selectedTile = null;
   selectedCandidate = null;
   picker = null;
@@ -121,6 +121,19 @@ function setState(next) {
   }));
   if (closedOnlyInput()) selectedCandidate = null;
   render();
+}
+
+function stepForLoadedState(loadedState) {
+  if (!loadedState.winMethod) return 1;
+  if (calculate(loadedState).ok) return 4;
+  if (!isRestoredHandComplete(loadedState) || !loadedState.winTile) return 2;
+  return 3;
+}
+
+function isRestoredHandComplete(loadedState) {
+  const tiles = flattenMelds(loadedState.melds);
+  const quads = loadedState.melds.filter((meld) => meld.kind === "quad").length;
+  return tiles.length === 14 + quads && decomposeHand(loadedState.melds).length > 0;
 }
 
 function el(tag, options = {}, children = []) {
@@ -179,27 +192,6 @@ function nav() {
   return topbar;
 }
 
-function progress() {
-  const labels = ["국", "패", "도라", "결과"];
-  return el(
-    "section",
-    { className: "progress" },
-    labels.map((label, index) =>
-      el("button", {
-        className: `progress-pill ${step === index + 1 ? "active" : ""}`,
-        text: label,
-        disabled: index + 1 > maxReachableStep(),
-        onClick: () => {
-          if (index + 1 <= maxReachableStep()) {
-            step = index + 1;
-            render();
-          }
-        },
-      }),
-    ),
-  );
-}
-
 function page() {
   if (step === 1) return pageOne();
   if (step === 2) return pageTwo();
@@ -207,7 +199,7 @@ function page() {
   return pageFour();
 }
 
-function panel(title, note, children = []) {
+function panel(title, children = []) {
   return el("section", { className: "panel" }, [
     el("h2", { text: title }),
     ...children,
@@ -225,18 +217,18 @@ function chip(label, active, onClick, disabled = false) {
 function pageOne() {
   return el("div", {}, [
     initialShareError ? el("div", { className: "alert page-alert", text: initialShareError }) : null,
-    panel("화료 방식", null, [
+    panel("화료 방식", [
       el("div", { className: "button-grid" }, [
         button("론", state.winMethod === "ron", () => setWinMethod("ron"), "primary"),
         button("쯔모", state.winMethod === "tsumo", () => setWinMethod("tsumo"), "primary"),
       ]),
     ]),
-    panel("국 정보", null, [
+    panel("국 정보", [
       windSection("장풍", "roundWind"),
       windSection("자풍", "seatWind"),
       honbaSection(),
     ]),
-    panel("특정 상황역", null, [
+    panel("특정 상황역", [
       el("div", { className: "chip-grid two" }, situationChips()),
     ]),
     footer([{ label: "손패 입력으로", primary: true, disabled: !canStepOneContinue(), onClick: () => goNext() }]),
@@ -278,6 +270,15 @@ function normalizeSituationForUi(situation, winMethod, melds = []) {
   if (next.houtei) next.haitei = false;
   if (next.chankan) next.rinshan = false;
   if (next.rinshan) next.chankan = false;
+  if (next.rinshan) {
+    next.haitei = false;
+    next.ippatsu = false;
+  }
+  if (next.chankan) {
+    next.houtei = false;
+    next.doubleRiichi = false;
+  }
+  if (!next.riichi && !next.doubleRiichi) next.ippatsu = false;
   if (!Object.entries(next).some(([keyName, value]) => keyName !== "none" && value)) next.none = true;
   else next.none = false;
   return next;
@@ -300,17 +301,6 @@ function windSection(label, key) {
   ]);
 }
 
-function stepper(label, value, onChange) {
-  return el("div", {}, [
-    el("div", { className: "label", text: label }),
-    el("div", { className: "stepper" }, [
-      el("button", { text: "-", onClick: () => onChange(Math.max(0, value - 1)) }),
-      el("span", { text: String(value) }),
-      el("button", { text: "+", onClick: () => onChange(value + 1) }),
-    ]),
-  ]);
-}
-
 function honbaSection() {
   const options = Array.from({ length: 9 }, (_, index) => index);
   return el("div", {}, [
@@ -325,12 +315,12 @@ function situationChips() {
   const hasOpen = state.melds.some((meld) => meld.open);
   const chips = [
     !hasOpen && !state.situation.doubleRiichi ? item("riichi", "리치") : null,
-    !hasOpen && !state.situation.riichi ? item("doubleRiichi", "더블리치") : null,
-    !hasOpen && riichiActive ? item("ippatsu", "일발") : null,
-    state.winMethod === "ron" && !state.situation.rinshan ? item("chankan", "창깡") : null,
-    state.winMethod === "tsumo" && !state.situation.chankan ? item("rinshan", "영상개화") : null,
-    state.winMethod === "tsumo" && !state.situation.houtei ? item("haitei", "해저로월") : null,
-    state.winMethod === "ron" && !state.situation.haitei ? item("houtei", "하저로어") : null,
+    !hasOpen && !state.situation.riichi && !state.situation.chankan ? item("doubleRiichi", "더블리치") : null,
+    !hasOpen && riichiActive && !state.situation.rinshan ? item("ippatsu", "일발") : null,
+    state.winMethod === "ron" && !state.situation.rinshan && !state.situation.houtei && !state.situation.doubleRiichi ? item("chankan", "창깡") : null,
+    state.winMethod === "tsumo" && !state.situation.chankan && !state.situation.haitei && !state.situation.ippatsu ? item("rinshan", "영상개화") : null,
+    state.winMethod === "tsumo" && !state.situation.houtei && !state.situation.rinshan ? item("haitei", "해저로월") : null,
+    state.winMethod === "ron" && !state.situation.haitei && !state.situation.chankan ? item("houtei", "하저로어") : null,
     item("none", "해당없음"),
   ];
   return chips.filter(Boolean);
@@ -352,6 +342,15 @@ function toggleSituation(key) {
   if (next.houtei) next.haitei = false;
   if (next.chankan) next.rinshan = false;
   if (next.rinshan) next.chankan = false;
+  if (next.rinshan) {
+    next.haitei = false;
+    next.ippatsu = false;
+  }
+  if (next.chankan) {
+    next.houtei = false;
+    next.doubleRiichi = false;
+  }
+  if (!next.riichi && !next.doubleRiichi) next.ippatsu = false;
   if (!Object.entries(next).some(([keyName, value]) => keyName !== "none" && value)) next.none = true;
   setState({ situation: next });
 }
@@ -361,7 +360,7 @@ function pageTwo() {
   const errors = visibleHandErrors();
   const winHighlight = { used: false };
   return el("div", {}, [
-    panel("현재 손패", null, [
+    panel("현재 손패", [
       state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index, winHighlight))) : null,
       el("p", { className: "panel-note", text: `현재 ${flattenMelds(state.melds).length}장 / ${complete ? "완성가능" : "미완성"}` }),
       el("div", { className: "hand-actions" }, [
@@ -369,13 +368,13 @@ function pageTwo() {
       ]),
     ]),
     complete
-      ? panel("화료패", null, [
+      ? panel("화료패", [
           !state.winTile ? el("p", { className: "panel-note win-note", text: WIN_TILE_REQUIRED_TEXT }) : null,
           el("div", { className: "win-candidates" }, winningTileCandidates(state.melds).map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
     !complete
-      ? panel("패 선택", null, [
+      ? panel("패 선택", [
           selectedTile
             ? el("div", { className: "selected-tile-row" }, [tileButton(selectedTile, () => {
                 selectedTile = null;
@@ -390,7 +389,7 @@ function pageTwo() {
         ])
       : null,
     selectedTile && !complete ? candidatePanel() : null,
-    errors.length ? panel("확인 필요", null, errors.map((message) => el("div", { className: "alert", text: message }))) : null,
+    errors.length ? panel("확인 필요", errors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([{ label: "도라 입력으로", primary: true, disabled: !canStepTwoContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -477,7 +476,7 @@ function isNumberTileId(tile) {
 function candidatePanel() {
   const candidates = viableCandidatesForSelectedTile();
   const groups = groupCandidates(candidates);
-  return panel("후보군", null, [
+  return panel("후보군", [
     selectedCandidate
       ? el("div", { className: "selected-candidate" }, [
           candidateBox(selectedCandidate),
@@ -573,9 +572,10 @@ function pageThree() {
   const needsUra = state.situation.riichi || state.situation.doubleRiichi;
   const shouldAskLastKanClosed = shouldAskLastKanClosedQuestion();
   const kanText = kanJudgementText();
+  if (!needsUra && picker?.key === "uraIndicators") picker = null;
   const activePicker = picker;
   return el("div", {}, [
-    panel("깡 직후에 화료했나요?", null, [
+    panel("깡 직후에 화료했나요?", [
       el("div", { className: "button-grid" }, [
         button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
         button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
@@ -583,10 +583,10 @@ function pageThree() {
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
       kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text }) : null,
     ]),
-    indicatorPanel("도라 표시패", null, "doraIndicators", false),
-    indicatorPanel("우라도라 표시패", null, "uraIndicators", !needsUra),
-    activePicker ? panel("표시패 선택", null, [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
-    doraErrors.length ? panel("확인 필요", null, doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
+    indicatorPanel("도라 표시패", "doraIndicators"),
+    needsUra ? indicatorPanel("우라도라 표시패", "uraIndicators") : null,
+    activePicker ? panel("표시패 선택", [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
+    doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -601,16 +601,15 @@ function lastKanClosedQuestion() {
   ]);
 }
 
-function indicatorPanel(title, note, key, disabled) {
+function indicatorPanel(title, key) {
   const values = normalizedSlots(state[key] || []);
-  return panel(title, note, [
+  return panel(title, [
     el(
       "div",
       { className: "slot-row" },
       values.map((tile, index) =>
         el("button", {
           className: `slot ${picker?.key === key && picker.index === index ? "active" : ""}`,
-          disabled,
           onClick: () => {
             if (tile) {
               const next = [...values];
@@ -676,11 +675,11 @@ function resultView(result) {
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
       el("div", { className: "subscore", text: scoreDetailLabel(result) }),
     ]),
-    panel("역 목록", "도라/적도라/깡도라는 도라 N으로 합산한다.", [
+    panel("역 목록", [
       el("div", { className: "result-lines yaku-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
       result.alternatives.length ? el("button", { className: "secondary-action", text: "동점 해석 보기", onClick: () => openAlternatives(result.alternatives) }) : null,
     ]),
-    panel("부수 breakdown", result.han >= 5 ? "만관 이상은 부수 무관으로 축약한다." : null, [
+    panel("부수 breakdown", [
       result.han >= 5
         ? el("p", { className: "muted", text: "부수 무관" })
         : el("div", { className: "result-lines" }, fuBreakdownRows(result)),
@@ -744,7 +743,8 @@ function hanFuLabel(result) {
 
 function scoreDetailLabel(result) {
   if (result.score.limitName && result.fu !== null) return `${hanFuLabel(result)} / ${result.score.limitName}`;
-  return result.score.limitName || hanFuLabel(result);
+  if (result.score.limitName) return `${result.han}판 / ${result.score.limitName}`;
+  return hanFuLabel(result);
 }
 
 function yakuSummary(yaku) {
@@ -889,11 +889,6 @@ function resetAll() {
   lastSavedRecentKey = null;
   location.hash = "";
   render();
-}
-
-function shortTile(tile) {
-  const label = tileLabel(tile);
-  return label.replace("만", "萬").replace("통", "筒").replace("삭", "索").replace("적5", "赤");
 }
 
 function tileAssetSrc(tile) {

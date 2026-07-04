@@ -170,28 +170,6 @@ h1 {
   line-height: 1.18;
 }
 
-.progress {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin: 14px 0 18px;
-}
-
-.progress-pill {
-  border: 0;
-  border-radius: 999px;
-  min-height: 24px;
-  background: #f6deb8;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.progress-pill.active {
-  background: var(--red);
-  color: #fff;
-}
-
 .panel {
   margin: 16px 0;
   padding: 14px 18px 16px;
@@ -280,7 +258,6 @@ h1 {
 
 .choice,
 .chip,
-.stepper button,
 .candidate-action,
 .secondary-action {
   border: 1px solid var(--line-soft);
@@ -315,36 +292,6 @@ h1 {
   background: var(--disabled);
   border-color: var(--disabled);
   color: #8b7b67;
-}
-
-.stepper-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-}
-
-.stepper {
-  display: grid;
-  grid-template-columns: 42px 1fr 42px;
-  align-items: center;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: var(--control);
-  overflow: hidden;
-}
-
-.stepper span {
-  text-align: center;
-  font-weight: 900;
-}
-
-.stepper button {
-  border-width: 0;
-  border-radius: 0;
-  min-height: 38px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 20px;
 }
 
 .footer {
@@ -677,11 +624,6 @@ h1 {
 .slot.active {
   border-color: var(--red);
   box-shadow: inset 0 0 0 1px var(--red);
-}
-
-.slot:disabled {
-  background: var(--disabled);
-  border-color: var(--disabled);
 }
 
 .slot-plus {

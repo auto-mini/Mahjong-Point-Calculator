@@ -46,6 +46,7 @@ const SHARE_VERSION_PREFIX = "2~";
 const SHARE_NULL = ".";
 const SHARE_FIELD_SEPARATOR = "~";
 const SHARE_MELD_SEPARATOR = ".";
+const MAX_SHARE_STATE_LENGTH = 4096;
 
 export function normalizeTile(tile) {
   return RED_FIVES.get(tile) || tile;
@@ -368,7 +369,7 @@ function hasSameSequenceSet(shape, requiredCopies) {
     const key = sequenceKey(meld);
     counts.set(key, (counts.get(key) || 0) + 1);
   }
-  return [...counts.values()].filter((count) => count >= 2).length >= requiredCopies;
+  return [...counts.values()].reduce((pairs, count) => pairs + Math.floor(count / 2), 0) >= requiredCopies;
 }
 
 function detectYakuman(shape, state) {
@@ -1000,6 +1001,7 @@ function dedupeCandidates(candidates) {
 
 export function decodeShareState(value) {
   if (typeof value !== "string") return null;
+  if (value.length > MAX_SHARE_STATE_LENGTH) return null;
   if (value.startsWith(SHARE_VERSION_PREFIX)) return decodeCompactShareState(value);
   return decodeLegacyShareState(value);
 }

@@ -322,6 +322,26 @@ test("chiitoi honroutou includes both yaku", () => {
   assert.equal(result.yaku.some((item) => item.name === "혼노두"), true);
 });
 
+test("four identical closed sequences can score as ryanpeikou", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "m5",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 9);
+  assert.equal(result.yaku.some((item) => item.han === 3), true);
+});
+
 test("open honitsu uses the reduced 2 han value", () => {
   const result = calc({
     winMethod: "ron",
@@ -597,6 +617,10 @@ test("share state parser allowlists fields and drops unknown melds", () => {
   assert.equal(decoded.melds[0].open, true);
   assert.equal(decoded.winTile, null);
   assert.deepEqual(decoded.doraIndicators, ["m1", null, "p1", null, null]);
+});
+
+test("share state parser rejects oversized payloads", () => {
+  assert.equal(decodeShareState(`2~${"A".repeat(5000)}`), null);
 });
 
 test("recent item sanitizer keeps only restorable valid calculations", () => {
