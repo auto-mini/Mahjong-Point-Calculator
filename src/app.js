@@ -1,6 +1,7 @@
 ﻿import {
   ALL_INDICATORS_34,
   ALL_TILES_37,
+  WINDS,
   calculate,
   candidateMeldsFor,
   createMeld,
@@ -261,8 +262,7 @@ function stepper(label, value, onChange) {
 }
 
 function honbaSection() {
-  const options = Array.from({ length: 10 }, (_, index) => index);
-  if (state.honba > 9) options.push(state.honba);
+  const options = Array.from({ length: 9 }, (_, index) => index);
   return el("div", {}, [
     el("div", { className: "label", text: "본장" }),
     el("div", { className: "honba-grid" }, options.map((value) => chip(`${value}`, state.honba === value, () => setState({ honba: value })))),
@@ -378,7 +378,11 @@ function tileButton(tile, onClick, active = false) {
 }
 
 function tileFace(tile, selected = false) {
-  return el("span", { className: `tile ${tile.endsWith("5r") ? "red-five" : ""} ${selected ? "selected" : ""}` }, [
+  const classes = ["tile"];
+  if (tile.endsWith("5r")) classes.push("red-five");
+  if (WINDS.includes(tile)) classes.push("wind-tile");
+  if (selected) classes.push("selected");
+  return el("span", { className: classes.join(" ") }, [
     el("span", { className: "tile-side" }),
     el("span", { className: "tile-front" }, [
       el("img", {
@@ -617,7 +621,7 @@ function resultView(result) {
   autoSaveRecent(result);
   return el("div", {}, [
     el("section", { className: "result-card" }, [
-      el("div", { text: result.score.dealer ? "친" : "자" }),
+      el("div", { text: result.score.dealer ? "오야" : "자" }),
       el("div", { className: "score", text: totalScoreDisplay(result.score) }),
       el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
     ]),
@@ -628,17 +632,46 @@ function resultView(result) {
     panel("부수 breakdown", result.han >= 5 ? "만관 이상은 부수 무관으로 축약한다." : null, [
       result.han >= 5
         ? el("p", { className: "muted", text: "부수 무관" })
-        : el("div", { className: "result-lines" }, [
-            ...result.fuLines.map((line) => el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })])),
-            el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]),
-          ]),
+        : el("div", { className: "result-lines" }, fuBreakdownRows(result)),
     ]),
-    panel("지불", "론은 방총자 1명 지불, 쯔모는 친/자 지불액을 구분한다.", [
+    panel("지불", "론은 방총자 1명 지불, 쯔모는 오야/자 지불액을 구분한다.", [
       el("div", { className: "result-lines" }, [
         el("div", { className: "result-line" }, [el("span", { text: state.winMethod === "ron" ? "론" : "쯔모" }), el("strong", { text: paymentDisplay(result.score) })]),
       ]),
     ]),
   ]);
+}
+
+function fuBreakdownRows(result) {
+  const rows = [];
+  const meldLines = result.fuLines.filter(isMeldFuLine);
+  const meldTotal = meldLines.reduce((sum, line) => sum + line.fu, 0);
+  let meldSummaryAdded = false;
+  for (const line of result.fuLines) {
+    if (isMeldFuLine(line)) {
+      if (!meldSummaryAdded) {
+        rows.push(el("button", {
+          className: "result-line result-line-button",
+          onClick: () => openFuDetails(meldLines),
+          title: "커쯔/깡쯔 세부 부수 보기",
+        }, [el("span", { text: "커쯔/깡쯔" }), el("span", { text: `+${meldTotal}` })]));
+        meldSummaryAdded = true;
+      }
+      continue;
+    }
+    rows.push(el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })]));
+  }
+  rows.push(el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]));
+  return rows;
+}
+
+function isMeldFuLine(line) {
+  return / (커쯔|깡쯔)$/.test(line.name);
+}
+
+function openFuDetails(lines) {
+  modal = { type: "fu-details", lines };
+  render();
 }
 
 function totalScoreDisplay(score) {
@@ -735,6 +768,9 @@ function doraValidationErrors() {
   if (needsLastKanClosedQuestion()) messages.push("마지막 깡 종류를 선택해주세요.");
   const dora = normalizedSlots(state.doraIndicators);
   if (!dora[0]) messages.push("도라 첫 칸을 입력해주세요.");
+  if (state.lastKanWin === true && isLastKanDoraRecognized() && leadingCount(dora) < 2) {
+    messages.push("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요.");
+  }
   if (hasMiddleGap(dora)) messages.push("도라 중간 칸이 비어 있습니다.");
   if (state.situation.riichi || state.situation.doubleRiichi) {
     const ura = normalizedSlots(state.uraIndicators);
@@ -837,7 +873,7 @@ function saveRecent(result, rerender = true) {
 }
 
 function recentLabel(result, sourceState) {
-  return `${result.score.dealer ? "친" : "자"} ${sourceState.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} / ${hanFuLabel(result)}`;
+  return `${result.score.dealer ? "오야" : "자"} ${sourceState.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} / ${hanFuLabel(result)}`;
 }
 
 function recentItemLabel(item) {
@@ -913,6 +949,14 @@ function renderModal() {
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
       ...modal.alternatives.map((item) => el("div", { className: "recent-item", text: `${totalScoreDisplay(item.score)} / ${hanFuLabel(item)}` })),
+    ];
+  } else if (modal?.type === "fu-details") {
+    body = [
+      el("div", { className: "sheet-header" }, [
+        el("h2", { text: "커쯔/깡쯔 세부" }),
+        el("button", { className: "icon-button", text: "닫기", onClick: close }),
+      ]),
+      el("div", { className: "result-lines" }, modal.lines.map((line) => el("div", { className: "result-line" }, [el("span", { text: line.name }), el("span", { text: `+${line.fu}` })]))),
     ];
   } else if (modal?.type === "restore-error") {
     body = [

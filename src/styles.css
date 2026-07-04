@@ -129,12 +129,13 @@ h1 {
 
 .panel h2 {
   font-size: 16px;
+  font-weight: 900;
   margin-bottom: 8px;
 }
 
 .panel:has(.tile-grid) {
-  padding-left: 9px;
-  padding-right: 9px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 
 .panel-note {
@@ -160,14 +161,14 @@ h1 {
 }
 
 .honba-grid {
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .honba-grid .chip {
-  min-height: 31px;
+  min-height: 34px;
   padding: 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .chip-grid.two {
@@ -385,10 +386,10 @@ h1 {
 .tile-front::after {
   content: "";
   position: absolute;
-  left: 12%;
-  right: 11%;
-  top: 8%;
-  bottom: 10%;
+  left: 14%;
+  right: 13%;
+  top: 10%;
+  bottom: 12%;
   z-index: 1;
   border: 1px solid #d7d0bd;
   border-radius: 8%;
@@ -402,6 +403,8 @@ h1 {
   height: 100%;
   display: block;
   object-fit: contain;
+  transform: scale(0.93);
+  transform-origin: center;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -409,6 +412,10 @@ h1 {
 .tile-mark {
   pointer-events: none;
   z-index: 2;
+}
+
+.tile.wind-tile .tile-mark {
+  filter: brightness(0);
 }
 
 .tile.selected {
@@ -448,6 +455,8 @@ h1 {
   --tile-h: calc(var(--tile-w) * 1.38);
   display: grid;
   gap: 8px;
+  margin-left: -9px;
+  margin-right: -9px;
 }
 
 .tile-grid-row {
@@ -622,6 +631,16 @@ h1 {
   grid-template-columns: 1fr auto;
   gap: 12px;
   font-weight: 800;
+}
+
+.result-line-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
 }
 
 .muted {

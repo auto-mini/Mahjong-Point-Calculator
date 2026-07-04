@@ -582,7 +582,7 @@ function calculateScore({ han, fu, seatWind, winMethod, honba = 0, riichiSticks 
     total: child * 2 + parent + sticks,
     payments: [
       { label: "자", amount: child },
-      { label: "친", amount: parent },
+      { label: "오야", amount: parent },
     ],
     display: `${child}/${parent}`,
   };
@@ -692,6 +692,15 @@ function pushUniqueErrors(errors, additions) {
   }
 }
 
+function isRecognizedLastKanDora(state) {
+  if (state.situation?.chankan) return false;
+  const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
+  if (!quads.length) return true;
+  const lastKanClosed = state.lastKanClosed ?? (quads.length === 1 ? !quads[0].open : !quads.some((meld) => meld.open));
+  if (state.situation?.rinshan) return lastKanClosed;
+  return true;
+}
+
 export function validateState(state) {
   const errors = [];
   if (!state.winMethod) errors.push("론/쯔모를 선택해주세요.");
@@ -708,6 +717,9 @@ export function validateState(state) {
   ]));
   if (!state.doraIndicators?.filter(Boolean).length) errors.push("도라 첫 칸을 입력해주세요.");
   const doraCount = leadingFilledCount(state.doraIndicators || []);
+  if (state.lastKanWin === true && isRecognizedLastKanDora(state) && doraCount < 2) {
+    errors.push("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요.");
+  }
   if (hasMiddleGap(state.doraIndicators || [])) errors.push("도라 중간 칸이 비어 있습니다.");
   const needsUra = state.situation?.riichi || state.situation?.doubleRiichi;
   if (needsUra) {

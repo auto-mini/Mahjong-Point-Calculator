@@ -96,6 +96,34 @@ test("dora and ura indicators participate in visible tile quantity validation", 
   assert.equal(errors.includes("동일패 5장 이상: 1만이 5장입니다."), true);
 });
 
+test("recognized last kan dora requires a second dora indicator", () => {
+  const base = {
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: true,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+  };
+  const errors = validateState(createStateFromMelds({
+    ...base,
+    doraIndicators: ["p9"],
+  }));
+  assert.equal(errors.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), true);
+
+  const fixed = validateState(createStateFromMelds({
+    ...base,
+    doraIndicators: ["p9", "s9"],
+  }));
+  assert.equal(fixed.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), false);
+});
+
 test("chankan does not require a sequence wait", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
