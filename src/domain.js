@@ -395,7 +395,7 @@ function detectYaku(shape, state) {
   if (state.winMethod === "tsumo" && closed) yaku.push({ name: "멘젠쯔모", han: 1 });
   if (state.situation?.rinshan) yaku.push({ name: "영상개화", han: 1 });
   if (state.situation?.chankan) yaku.push({ name: "창깡", han: 1 });
-  if (state.situation?.haitei) yaku.push({ name: "해저모월", han: 1 });
+  if (state.situation?.haitei) yaku.push({ name: "해저로월", han: 1 });
   if (state.situation?.houtei) yaku.push({ name: "하저로어", han: 1 });
 
   const tiles = handTilesFromShape(shape);
@@ -729,14 +729,14 @@ export function validateState(state) {
   if (state.situation?.none && activeSituations.length) errors.push("해당없음은 다른 상황역과 함께 선택할 수 없습니다.");
   if (state.situation?.riichi && state.situation?.doubleRiichi) errors.push("리치와 더블리치는 동시에 선택할 수 없습니다.");
   if (state.situation?.ippatsu && !(state.situation?.riichi || state.situation?.doubleRiichi)) errors.push("일발은 리치 또는 더블리치가 있을 때만 선택할 수 있습니다.");
-  if (state.situation?.haitei && state.situation?.houtei) errors.push("해저모월과 하저로어는 동시에 선택할 수 없습니다.");
+  if (state.situation?.haitei && state.situation?.houtei) errors.push("해저로월과 하저로어는 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && state.situation?.rinshan) errors.push("창깡과 영상개화는 동시에 선택할 수 없습니다.");
-  if (state.situation?.rinshan && state.situation?.haitei) errors.push("영상개화와 해저모월은 동시에 선택할 수 없습니다.");
+  if (state.situation?.rinshan && state.situation?.haitei) errors.push("영상개화와 해저로월은 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && state.situation?.houtei) errors.push("창깡과 하저로어는 동시에 선택할 수 없습니다.");
   if (state.situation?.rinshan && state.situation?.ippatsu) errors.push("영상개화와 일발은 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && state.situation?.doubleRiichi) errors.push("창깡과 더블리치는 동시에 선택할 수 없습니다.");
   if (state.situation?.chankan && !validChankanSequenceWait(state)) errors.push("창깡은 순자 대기에서만 선택할 수 있습니다.");
-  if (state.winMethod === "ron" && (state.situation?.haitei || state.situation?.rinshan)) errors.push("해저모월/영상개화는 쯔모 전용입니다.");
+  if (state.winMethod === "ron" && (state.situation?.haitei || state.situation?.rinshan)) errors.push("해저로월/영상개화는 쯔모 전용입니다.");
   if (state.winMethod === "tsumo" && (state.situation?.houtei || state.situation?.chankan)) errors.push("하저로어/창깡은 론 전용입니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);
   if (hasOpen && (state.situation?.riichi || state.situation?.doubleRiichi || state.situation?.ippatsu)) {
@@ -858,7 +858,6 @@ export function encodeShareState(state) {
     roundWind: state.roundWind,
     seatWind: state.seatWind,
     honba: state.honba,
-    riichiSticks: state.riichiSticks,
     situation: state.situation,
     melds: (state.melds || []).map((meld) => ({ tiles: meld.tiles, open: Boolean(meld.open) })),
     winTile: state.winTile,

@@ -50,6 +50,7 @@ function setState(next) {
       ...(next.situation || {}),
     },
   }));
+  if (closedOnlyInput()) selectedCandidate = null;
   render();
 }
 
@@ -144,10 +145,7 @@ function pageOne() {
     panel("국 정보", null, [
       windSection("장풍", "roundWind"),
       windSection("자풍", "seatWind"),
-      el("div", { className: "stepper-grid" }, [
-        stepper("본장", state.honba, (value) => setState({ honba: value })),
-        stepper("공탁", state.riichiSticks, (value) => setState({ riichiSticks: value })),
-      ]),
+      honbaSection(),
     ]),
     panel("특정 상황역", null, [
       el("div", { className: "chip-grid two" }, situationChips()),
@@ -162,6 +160,7 @@ function setWinMethod(method) {
 
 function normalizeUiState(rawState) {
   const next = createStateFromMelds(rawState);
+  next.riichiSticks = 0;
   next.situation = normalizeSituationForUi(next.situation, next.winMethod, next.melds);
   if (!isHandComplete(next.melds) || !winningTileCandidates(next.melds).includes(next.winTile)) next.winTile = null;
   return next;
@@ -222,6 +221,15 @@ function stepper(label, value, onChange) {
   ]);
 }
 
+function honbaSection() {
+  const options = Array.from({ length: 9 }, (_, index) => index);
+  if (state.honba > 8) options.push(state.honba);
+  return el("div", {}, [
+    el("div", { className: "label", text: "본장" }),
+    el("div", { className: "honba-grid" }, options.map((value) => chip(`${value}`, state.honba === value, () => setState({ honba: value })))),
+  ]);
+}
+
 function situationChips() {
   const item = (key, label, disabled = false) => chip(label, Boolean(state.situation[key]), () => toggleSituation(key), disabled);
   const riichiActive = state.situation.riichi || state.situation.doubleRiichi;
@@ -232,7 +240,7 @@ function situationChips() {
     item("ippatsu", "일발", hasOpen || !riichiActive),
     item("chankan", "창깡", state.winMethod === "tsumo" || state.situation.rinshan),
     item("rinshan", "영상개화", state.winMethod === "ron" || state.situation.chankan),
-    item("haitei", "해저모월", state.winMethod === "ron" || state.situation.houtei),
+    item("haitei", "해저로월", state.winMethod === "ron" || state.situation.houtei),
     item("houtei", "하저로어", state.winMethod === "tsumo" || state.situation.haitei),
     item("none", "해당없음"),
   ];
@@ -421,6 +429,7 @@ function candidateBox(candidate) {
     className: `candidate-box ${active ? "active" : ""}`,
     onClick: () => {
       if (candidate.kind === "pair") addCandidate(candidate, false);
+      else if (closedOnlyInput()) addCandidate(candidate, false);
       else {
         selectedCandidate = active ? null : candidate;
         render();
@@ -439,6 +448,10 @@ function addCandidate(candidate, open) {
   selectedTile = null;
   selectedCandidate = null;
   setState({ melds: [...state.melds, meld] });
+}
+
+function closedOnlyInput() {
+  return state.situation.riichi || state.situation.doubleRiichi || state.situation.ippatsu;
 }
 
 function removeMeld(index) {
@@ -557,8 +570,8 @@ function resultView(result) {
   return el("div", {}, [
     el("section", { className: "result-card" }, [
       el("div", { text: result.score.dealer ? "친" : "자" }),
-      el("div", { className: "score", text: result.score.display }),
-      el("div", { className: "subscore", text: result.score.limitName || `${result.han}판 ${result.fu ?? "부수 무관"}부` }),
+      el("div", { className: "score", text: totalScoreDisplay(result.score) }),
+      el("div", { className: "subscore", text: result.score.limitName || hanFuLabel(result) }),
     ]),
     panel("역 목록", "도라/적도라/깡도라는 도라 N으로 합산한다.", [
       el("div", { className: "result-lines" }, result.yaku.map((item) => el("div", { className: "result-line" }, [el("span", { text: item.name }), el("span", { text: `${item.han}판` })]))),
@@ -571,10 +584,23 @@ function resultView(result) {
       result.han < 5 ? el("div", { className: "result-line" }, [el("strong", { text: "최종 올림" }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]) : null,
     ]),
     panel("지불", "론은 방총자 1명 지불, 쯔모는 친/자 지불액을 구분한다.", [
-      el("div", { className: "result-lines" }, result.score.payments.map((payment) => el("div", { className: "result-line" }, [el("span", { text: payment.label }), el("strong", { text: `${payment.amount}점` })]))),
-      el("p", { className: "panel-note", text: `총 수입 ${result.score.total}점 / 본장 ${state.honba} / 공탁 ${state.riichiSticks}` }),
+      el("div", { className: "result-lines" }, [
+        el("div", { className: "result-line" }, [el("span", { text: state.winMethod === "ron" ? "론" : "쯔모" }), el("strong", { text: paymentDisplay(result.score) })]),
+      ]),
     ]),
   ]);
+}
+
+function totalScoreDisplay(score) {
+  return `${score.total}점`;
+}
+
+function paymentDisplay(score) {
+  return score.display.replace(" all", "all").replace("점", "");
+}
+
+function hanFuLabel(result) {
+  return result.han >= 5 ? `${result.han}판` : `${result.han}판 ${result.fu}부`;
 }
 
 function errorResult(errors) {
@@ -848,7 +874,7 @@ function saveRecent(result, rerender = true) {
   lastSavedRecentKey = recentKey(result);
   const item = {
     at: new Date().toISOString(),
-    label: `${result.score.dealer ? "친" : "자"} ${state.winMethod === "ron" ? "론" : "쯔모"} ${result.score.display} / ${result.han}판 ${result.fu ?? "부수 무관"}부`,
+    label: recentLabel(result, state),
     state: JSON.parse(JSON.stringify({
       ...state,
       melds: state.melds.map((meld) => ({ tiles: meld.tiles, open: meld.open })),
@@ -858,6 +884,16 @@ function saveRecent(result, rerender = true) {
   recent.unshift(item);
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
   if (rerender) render();
+}
+
+function recentLabel(result, sourceState) {
+  return `${result.score.dealer ? "친" : "자"} ${sourceState.winMethod === "ron" ? "론" : "쯔모"} ${totalScoreDisplay(result.score)} / ${hanFuLabel(result)}`;
+}
+
+function recentItemLabel(item) {
+  const recentState = normalizeUiState(item.state);
+  const result = calculate(recentState);
+  return result.ok ? recentLabel(result, recentState) : item.label;
 }
 
 function readRecent() {
@@ -916,7 +952,7 @@ function renderModal() {
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
       recent.length
-        ? el("div", {}, recent.map((item) => el("button", { className: "recent-item", text: item.label, onClick: () => restoreRecent(item) })))
+        ? el("div", {}, recent.map((item) => el("button", { className: "recent-item", text: recentItemLabel(item), onClick: () => restoreRecent(item) })))
         : el("p", { className: "panel-note", text: "저장된 최근계산이 없습니다." }),
       recent.length ? el("button", { className: "secondary-action", text: "전체 삭제", onClick: () => { localStorage.removeItem(RECENT_KEY); render(); } }) : null,
     ];
@@ -926,7 +962,7 @@ function renderModal() {
         el("h2", { text: "동점 해석" }),
         el("button", { className: "icon-button", text: "닫기", onClick: close }),
       ]),
-      ...modal.alternatives.map((item) => el("div", { className: "recent-item", text: `${item.han}판 ${item.fu ?? "부수 무관"}부 / ${item.score.display}` })),
+      ...modal.alternatives.map((item) => el("div", { className: "recent-item", text: `${totalScoreDisplay(item.score)} / ${hanFuLabel(item)}` })),
     ];
   } else if (modal?.type === "restore-error") {
     body = [
@@ -959,7 +995,7 @@ function restoreRecent(item) {
     render();
     return;
   }
-  state = createStateFromMelds(safeItem.state);
+  state = normalizeUiState(safeItem.state);
   step = 4;
   modal = null;
   selectedTile = null;
