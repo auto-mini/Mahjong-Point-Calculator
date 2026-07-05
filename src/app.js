@@ -225,7 +225,8 @@ function attachTapFeedback(node, onClick, instantClick = false) {
   });
 }
 
-function render() {
+function render({ preserveModalFocus = false } = {}) {
+  const modalFocus = preserveModalFocus ? modalFocusSnapshot() : null;
   renderVersion += 1;
   latestResult = calculate(state);
   clearModalNodes();
@@ -235,6 +236,7 @@ function render() {
   if (modalNodes.length) app.setAttribute("aria-hidden", "true");
   else app.removeAttribute("aria-hidden");
   document.body.append(...modalNodes);
+  if (restoreModalFocusSnapshot(modalFocus)) return;
   focusModal();
 }
 
@@ -1208,7 +1210,7 @@ function shareCurrentState() {
     navigator.clipboard?.writeText(url).then(() => {
       if (modal?.type === "share" && modal.url === url && !modal.copied) {
         modal = { type: "share", url, copied: true };
-        render();
+        render({ preserveModalFocus: true });
       }
     }).catch(() => {
       // Clipboard is optional; the visible URL box remains the fallback.
@@ -1241,6 +1243,30 @@ function restoreModalFocus() {
         : null;
     target?.focus?.();
   });
+}
+
+function modalFocusSnapshot() {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !active.closest(".sheet")) return null;
+  return {
+    tagName: active.tagName,
+    ariaLabel: active.getAttribute("aria-label"),
+    className: String(active.className || ""),
+    text: active.textContent?.trim() || "",
+  };
+}
+
+function restoreModalFocusSnapshot(snapshot) {
+  if (!snapshot || !modal) return false;
+  const sheet = document.querySelector(".sheet");
+  const target = focusableModalElements(sheet).find((node) =>
+    node.tagName === snapshot.tagName &&
+    node.getAttribute("aria-label") === snapshot.ariaLabel &&
+    String(node.className || "") === snapshot.className &&
+    (node.textContent?.trim() || "") === snapshot.text
+  );
+  target?.focus?.();
+  return Boolean(target);
 }
 
 function findButtonByText(text) {
