@@ -1050,6 +1050,30 @@ test("30 fu 4 han is not rounded up to mangan", () => {
   assert.equal(result.score.display, "7700점");
 });
 
+test("4 han 40 fu is labelled as mangan", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: [
+      { tiles: ["white", "white", "white"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["m1"],
+    uraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 4);
+  assert.equal(result.fu, 40);
+  assert.equal(result.score.limitName, "만관");
+  assert.equal(result.score.display, "8000점");
+});
+
 test("3 han 70 fu is labelled as mangan", () => {
   const result = calc({
     winMethod: "ron",
