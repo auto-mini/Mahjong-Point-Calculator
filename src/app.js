@@ -1027,7 +1027,7 @@ function doraValidationErrors() {
   const doraCount = leadingCount(dora);
   const requiredDoraCount = requiredDoraIndicatorCount();
   if (!dora[0]) messages.push("도라 첫 칸을 입력해주세요.");
-  if (doraCount < requiredDoraCount) {
+  if (!isRequiredDoraCountPending() && doraCount < requiredDoraCount) {
     messages.push(`도라 표시패를 ${requiredDoraCount}개 이상 입력해주세요.`);
   }
   if (hasMiddleGap(dora)) messages.push("도라 중간 칸이 비어 있습니다.");
@@ -1112,6 +1112,10 @@ function shouldAskLastKanWinQuestion() {
 
 function shouldAskLastKanClosedQuestion() {
   return state.lastKanWin === true && state.situation.rinshan && quads().length > 0 && inferLastKanClosedFromMelds() === null;
+}
+
+function isRequiredDoraCountPending() {
+  return (shouldAskLastKanWinQuestion() && state.lastKanWin === null) || needsLastKanClosedQuestion();
 }
 
 function inferLastKanClosedFromMelds(melds = state.melds) {

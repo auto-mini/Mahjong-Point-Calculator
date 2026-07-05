@@ -210,6 +210,25 @@ test("ron after another player's kan still requires the added dora indicator", (
   assert.equal(errors.includes("도라 표시패를 2개 이상 입력해주세요."), true);
 });
 
+test("pending last kan win answer hides the minimum dora count warning", () => {
+  const errors = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["p9"],
+  }));
+  assert.equal(errors.includes("마지막 깡 직후 질문에 응답해주세요."), true);
+  assert.equal(errors.includes("도라 표시패를 2개 이상 입력해주세요."), false);
+});
+
 test("ippatsu is rejected after a non-chankan kan", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
@@ -255,6 +274,7 @@ test("rinshan requires a hand quad and last kan type", () => {
     doraIndicators: ["east"],
   }));
   assert.equal(missingType.includes("쯔모 직전 깡 종류를 선택해주세요."), true);
+  assert.equal(missingType.includes("도라 표시패를 2개 이상 입력해주세요."), false);
 });
 
 test("rinshan added kan dora depends on closed kan answer", () => {

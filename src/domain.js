@@ -781,6 +781,12 @@ function requiredDoraIndicatorCount(state) {
   return 1 + Math.max(0, recognizedKanDora);
 }
 
+function isRequiredDoraCountPending(state) {
+  const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
+  if (!state.situation?.rinshan && !state.situation?.chankan && state.lastKanWin === null) return true;
+  return state.situation?.rinshan && resolvedLastKanClosed(state) === null && quads.length > 0;
+}
+
 export function validateState(state) {
   const errors = [];
   if (!state.winMethod) errors.push("론/쯔모를 선택해주세요.");
@@ -812,7 +818,7 @@ export function validateState(state) {
   if (!state.doraIndicators?.filter(Boolean).length) errors.push("도라 첫 칸을 입력해주세요.");
   const doraCount = leadingFilledCount(state.doraIndicators || []);
   const requiredDoraCount = requiredDoraIndicatorCount(state);
-  if (doraCount < requiredDoraCount) {
+  if (!isRequiredDoraCountPending(state) && doraCount < requiredDoraCount) {
     errors.push(`도라 표시패를 ${requiredDoraCount}개 이상 입력해주세요.`);
   }
   if (hasMiddleGap(state.doraIndicators || [])) errors.push("도라 중간 칸이 비어 있습니다.");
