@@ -363,6 +363,11 @@ h1 {
   min-height: 42px;
 }
 
+.large-touch .choice,
+.large-touch .candidate-action {
+  min-height: 42px;
+}
+
 .large-touch .honba-grid {
   --honba-chip-size: clamp(42px, 12vw, 46px);
   grid-template-columns: repeat(5, var(--honba-chip-size));
