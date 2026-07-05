@@ -78,6 +78,9 @@ const html = await readFile(join(root, "index.html"), "utf8").catch(() => "");
 if (html && !html.includes('type="module"')) {
   throw new Error("index.html must load the app as a module");
 }
+if (html && !html.includes('rel="icon"')) {
+  throw new Error("index.html must include a favicon link to avoid a missing icon request");
+}
 if (html && !html.includes('http-equiv="Content-Security-Policy"')) {
   throw new Error("index.html must include a meta Content-Security-Policy for GitHub Pages");
 }
@@ -86,6 +89,17 @@ if (html && !html.includes("font-src 'self'")) {
 }
 if (html && !html.includes('name="referrer" content="no-referrer"')) {
   throw new Error("index.html must include a no-referrer policy");
+}
+
+if (root !== ".") {
+  await access(join(root, ".nojekyll"));
+  const headers = await readFile(join(root, "_headers"), "utf8").catch(() => "");
+  if (!headers.includes("Content-Security-Policy: default-src 'self'")) {
+    throw new Error("dist _headers must include the Content-Security-Policy header");
+  }
+  if (!headers.includes("X-Content-Type-Options: nosniff")) {
+    throw new Error("dist _headers must include X-Content-Type-Options");
+  }
 }
 
 const tileLicense = await readFile(join(root, "assets/tiles/LICENSE.md"), "utf8").catch(() => "");
