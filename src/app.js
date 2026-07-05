@@ -288,7 +288,8 @@ function pageOne() {
 }
 
 function setWinMethod(method) {
-  setState({ winMethod: state.winMethod === method ? null : method });
+  const nextMethod = state.winMethod === method ? null : method;
+  setState({ winMethod: nextMethod, lastKanWin: null, lastKanClosed: null });
 }
 
 function normalizeUiState(rawState) {
@@ -309,6 +310,12 @@ function normalizeUiState(rawState) {
 
 function normalizeSituationForUi(situation, winMethod, melds = []) {
   const next = { ...situation };
+  if (!winMethod) {
+    next.chankan = false;
+    next.rinshan = false;
+    next.haitei = false;
+    next.houtei = false;
+  }
   if (winMethod === "ron") {
     next.rinshan = false;
     next.haitei = false;
@@ -387,6 +394,7 @@ function situationChips() {
 
 function toggleSituation(key) {
   const next = { ...state.situation };
+  const hadImpliedLastKanWin = state.situation.chankan || state.situation.rinshan;
   if (key === "none") {
     for (const item of Object.keys(next)) next[item] = false;
     next.none = true;
@@ -411,7 +419,11 @@ function toggleSituation(key) {
   }
   if (!next.riichi && !next.doubleRiichi) next.ippatsu = false;
   if (!Object.entries(next).some(([keyName, value]) => keyName !== "none" && value)) next.none = true;
-  setState({ situation: next });
+  const hasImpliedLastKanWin = next.chankan || next.rinshan;
+  setState({
+    situation: next,
+    ...(hadImpliedLastKanWin && !hasImpliedLastKanWin ? { lastKanWin: null, lastKanClosed: null } : {}),
+  });
 }
 
 function pageTwo() {
