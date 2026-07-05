@@ -137,6 +137,7 @@ function setState(next) {
     state.lastKanClosed = null;
   }
   if (closedOnlyInput()) selectedCandidate = null;
+  if (location.hash.startsWith("#s=")) history.replaceState(null, "", location.pathname);
   render();
 }
 
