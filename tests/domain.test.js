@@ -824,6 +824,115 @@ test("open tanyao is accepted with kuitan", () => {
   assert.equal(result.yaku.some((item) => item.name === "탕야오"), true);
 });
 
+test("representative pattern yaku are detected", () => {
+  const sanshokuDoujun = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["p1", "p2", "p3"] },
+      { tiles: ["s1", "s2", "s3"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["north", "north"] },
+    ],
+    winTile: "m4",
+    doraIndicators: ["east"],
+  });
+  assert.equal(sanshokuDoujun.ok, true);
+  assert.deepEqual(sanshokuDoujun.yaku.find((item) => item.name === "삼색동순"), { name: "삼색동순", han: 2 });
+
+  const sanshokuDoukou = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2"] },
+      { tiles: ["p2", "p2", "p2"] },
+      { tiles: ["s2", "s2", "s2"] },
+      { tiles: ["m3", "m4", "m5"] },
+      { tiles: ["north", "north"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["east"],
+  });
+  assert.equal(sanshokuDoukou.ok, true);
+  assert.deepEqual(sanshokuDoukou.yaku.find((item) => item.name === "삼색동각"), { name: "삼색동각", han: 2 });
+
+  const ittsu = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["m7", "m8", "m9"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["north", "north"] },
+    ],
+    winTile: "m7",
+    doraIndicators: ["east"],
+  });
+  assert.equal(ittsu.ok, true);
+  assert.deepEqual(ittsu.yaku.find((item) => item.name === "일기통관"), { name: "일기통관", han: 2 });
+
+  const chanta = calc({
+    winMethod: "ron",
+    roundWind: "south",
+    seatWind: "west",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["p7", "p8", "p9"] },
+      { tiles: ["s1", "s1", "s1"] },
+      { tiles: ["m9", "m9", "m9"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["p2"],
+  });
+  assert.equal(chanta.ok, true);
+  assert.deepEqual(chanta.yaku.find((item) => item.name === "찬타"), { name: "찬타", han: 2 });
+
+  const junchan = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m7", "m8", "m9"] },
+      { tiles: ["p1", "p2", "p3"] },
+      { tiles: ["p7", "p8", "p9"] },
+      { tiles: ["s9", "s9"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["east"],
+  });
+  assert.equal(junchan.ok, true);
+  assert.deepEqual(junchan.yaku.find((item) => item.name === "준찬타"), { name: "준찬타", han: 3 });
+  assert.equal(junchan.yaku.some((item) => item.name === "찬타"), false);
+});
+
+test("shousangen is detected without treating it as daisangen", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["white", "white", "white"] },
+      { tiles: ["green", "green", "green"] },
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["p7", "p8", "p9"] },
+      { tiles: ["red", "red"] },
+    ],
+    winTile: "red",
+    doraIndicators: ["m4"],
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.yaku.find((item) => item.name === "소삼원"), { name: "소삼원", han: 2 });
+  assert.deepEqual(result.yaku.find((item) => item.name === "백"), { name: "백", han: 1 });
+  assert.deepEqual(result.yaku.find((item) => item.name === "발"), { name: "발", han: 1 });
+});
+
 test("open ron with no added fu keeps minimum 30 fu breakdown consistent", () => {
   const result = calc({
     winMethod: "ron",
