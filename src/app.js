@@ -797,7 +797,7 @@ function ippatsuKanNotice() {
   if (!state.situation.ippatsu || state.situation.chankan) return null;
   return el("div", {
     className: "ok-note kan-note",
-    text: "일발 선택 중입니다.\n깡 직후 타가가 버린 패로 론했다면 일발이 아닙니다. 그런 경우 뒤로 가서 일발을 해제하세요.",
+    text: "일발 선택 중입니다.\n깡 직후 타가가 버린 패로 론했다면\n일발이 아닙니다.\n그런 경우 뒤로 가서 일발을 해제하세요.",
   });
 }
 
@@ -893,7 +893,7 @@ function markDoraPageTouched() {
 function kanJudgementText() {
   const label = kanDoraLabel();
   if (state.situation.chankan) {
-    return { recognized: false, text: `창깡 성립시, 해당 깡으로 인한 ${label}는 추가되지 않습니다.` };
+    return { recognized: false, text: `창깡 성립시,\n${kanDoraSentence(label, "해당 깡", "추가되지 않습니다.")}` };
   }
   if (state.situation.rinshan) {
     if (needsLastKanClosedQuestion()) return null;
@@ -903,19 +903,26 @@ function kanJudgementText() {
     return {
       recognized,
       text: recognized
-        ? `쯔모 직전의 깡으로 인한 ${label}는 추가해야 합니다.`
-        : `쯔모 직전의 깡으로 인한 ${label}는 추가되지 않습니다.`,
+        ? kanDoraSentence(label, "쯔모 직전의 깡", "추가해야 합니다.")
+        : kanDoraSentence(label, "쯔모 직전의 깡", "추가되지 않습니다."),
     };
   }
   if (state.lastKanWin !== true) return null;
   if (state.winMethod === "ron") {
-    return { recognized: true, text: `론 직전의 깡으로 인한 ${label}는 추가해야 합니다.` };
+    return { recognized: true, text: kanDoraSentence(label, "론 직전의 깡", "추가해야 합니다.") };
   }
-  return { recognized: false, text: "깡 직후 쯔모라면 영상개화를 선택해야 합니다." };
+  return { recognized: false, text: "깡 직후 쯔모라면\n영상개화를 선택해야 합니다." };
 }
 
 function kanDoraLabel() {
   return state.situation.riichi || state.situation.doubleRiichi ? "도라와 우라도라" : "도라";
+}
+
+function kanDoraSentence(label, kanSubject, action) {
+  if (label === "도라와 우라도라") {
+    return `${kanSubject}으로 인한\n도라와 우라도라는\n${action}`;
+  }
+  return `${kanSubject}으로 인한 도라는\n${action}`;
 }
 
 function pageFour() {
@@ -1470,7 +1477,7 @@ function renderModal() {
       el("div", { className: "notice-list" }, [
         el("p", { text: "계산 결과는 보조 도구입니다. 이상한 결과가 있으면 손패, 화료패, 도라 표시패를 다시 확인해주세요." }),
         el("p", { text: "작혼 4인 일반게임 룰 기준입니다. 룰 변경이나 특수 룰에는 맞지 않을 수 있습니다." }),
-        el("p", { text: "도라/우라도라 표시패는 실제로 뒤집힌 것만 순서대로 입력해주세요." }),
+        el("p", { text: "도라/우라도라 표시패는 왼쪽부터 순서대로, 실제로 뒤집힌 것만 입력해주세요." }),
         el("p", { text: "역만 손패는 계산 대상이 아닙니다." }),
         el("p", { text: "공탁금과 유국만관은 지원하지 않습니다." }),
         el("p", { text: "5판 이상은 부수와 무관하므로 부수 표시를 생략합니다. 부수로 만관이 되는 경우는 판/부를 표시합니다." }),

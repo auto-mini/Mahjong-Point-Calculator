@@ -885,6 +885,8 @@ h1 {
 
 .kan-note {
   white-space: pre-line;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .slot.active {
@@ -1063,6 +1065,8 @@ h1 {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .recent-clear {
