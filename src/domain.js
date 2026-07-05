@@ -715,7 +715,8 @@ function safeSituation(value) {
 
 function safeMelds(value) {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, 7).flatMap((raw) => {
+  if (value.length > 7) return [];
+  return value.flatMap((raw) => {
     if (!raw || !Array.isArray(raw.tiles)) return [];
     if (raw.tiles.length < 2 || raw.tiles.length > 4) return [];
     const tiles = raw.tiles.slice(0, 4);

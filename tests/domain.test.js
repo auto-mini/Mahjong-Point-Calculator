@@ -1386,6 +1386,28 @@ test("share state parser clamps honba to the supported UI range", () => {
   assert.equal(decoded.honba, 8);
 });
 
+test("share state parser rejects oversized meld lists instead of truncating them", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["p1", "p2", "p3"] },
+      { tiles: ["p4", "p5", "p6"] },
+      { tiles: ["s1", "s1"] },
+      { tiles: ["s2", "s2"] },
+      { tiles: ["s3", "s3"] },
+      { tiles: ["s4", "s4"] },
+    ],
+    winTile: "s1",
+    doraIndicators: ["east"],
+  }));
+  assert.deepEqual(decoded.melds, []);
+});
+
 test("share state parser rejects oversized payloads", () => {
   assert.equal(decodeShareState(`2~${"A".repeat(5000)}`), null);
 });

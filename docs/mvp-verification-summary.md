@@ -31,7 +31,7 @@
 최근 확인 명령:
 
 - `scripts/run.ps1 test`
-  - 70개 테스트 통과
+  - 71개 테스트 통과
 - `scripts/run.ps1 verify`
   - 정적 앱 필수 파일, CSP meta, favicon, 라이선스 확인 통과
 - `scripts/run.ps1 build`
