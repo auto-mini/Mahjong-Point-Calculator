@@ -36,6 +36,12 @@ function isInsideRoot(file) {
   return path === "" || (!path.startsWith("..") && !isAbsolute(path));
 }
 
+function isPublicAppPath(file) {
+  const path = relative(root, file).replace(/\\/g, "/");
+  const [first] = path.split("/");
+  return first === "index.html" || first === "src" || first === "assets";
+}
+
 function localNetworkUrls() {
   return Object.values(networkInterfaces())
     .flat()
@@ -55,9 +61,9 @@ const server = createServer(async (request, response) => {
   }
   const requested = decodedPath === "/" ? "index.html" : decodedPath.replace(/^[/\\]+/, "");
   const file = resolve(root, requested);
-  if (!isInsideRoot(file)) {
-    response.writeHead(403, { "content-type": "text/plain; charset=utf-8", ...securityHeaders });
-    response.end("Forbidden");
+  if (!isInsideRoot(file) || !isPublicAppPath(file)) {
+    response.writeHead(404, { "content-type": "text/plain; charset=utf-8", ...securityHeaders });
+    response.end("Not found");
     return;
   }
   try {

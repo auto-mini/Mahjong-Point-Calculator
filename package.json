@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/domain.test.js",
+    "test": "node --test tests/domain.test.js tests/server.test.js",
     "verify": "node scripts/verify-static-app.js .",
     "build": "node scripts/build-static.js && node scripts/verify-static-app.js dist",
     "preview": "node scripts/serve.js --root dist",

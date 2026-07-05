@@ -270,13 +270,13 @@ function button(label, active, onClick, extra = "") {
   return el("button", { className: `choice ${extra} ${active ? "active" : ""}`, text: label, onClick, ariaPressed: active });
 }
 
-function chip(label, active, onClick, disabled = false) {
-  return el("button", { className: `chip ${active ? "active" : ""}`, text: label, onClick, disabled, ariaPressed: active });
+function chip(label, active, onClick, disabled = false, ariaLabel = null) {
+  return el("button", { className: `chip ${active ? "active" : ""}`, text: label, onClick, disabled, ariaPressed: active, ariaLabel });
 }
 
 function pageOne() {
   return el("div", {}, [
-    initialShareError ? el("div", { className: "alert page-alert", text: initialShareError }) : null,
+    initialShareError ? el("div", { className: "alert page-alert", text: initialShareError, attrs: { role: "alert" } }) : null,
     panel("화료 방식", [
       el("div", { className: "button-grid" }, [
         button("론", state.winMethod === "ron", () => setWinMethod("ron"), "primary"),
@@ -369,8 +369,8 @@ function windSection(label, key) {
     el("div", { className: "label", text: label }),
     el(
       "div",
-      { className: "wind-grid" },
-      options.map(([value, text]) => chip(text, state[key] === value, () => setState({ [key]: value }))),
+      { className: "wind-grid", attrs: { role: "group", "aria-label": label } },
+      options.map(([value, text]) => chip(text, state[key] === value, () => setState({ [key]: value }), false, `${label} ${text}`)),
     ),
   ]);
 }
@@ -379,7 +379,7 @@ function honbaSection() {
   const options = Array.from({ length: 9 }, (_, index) => index);
   return el("div", {}, [
     el("div", { className: "label", text: "본장" }),
-    el("div", { className: "honba-grid" }, options.map((value) => chip(`${value}`, state.honba === value, () => setState({ honba: value })))),
+    el("div", { className: "honba-grid", attrs: { role: "group", "aria-label": "본장" } }, options.map((value) => chip(`${value}`, state.honba === value, () => setState({ honba: value }), false, `${value}본장`))),
   ]);
 }
 
@@ -468,7 +468,7 @@ function pageTwo() {
         ])
       : null,
     selectedTile && !complete ? candidatePanel() : null,
-    errors.length ? panel("확인 필요", errors.map((message) => el("div", { className: "alert", text: message }))) : null,
+    errors.length ? panel("확인 필요", errors.map((message) => el("div", { className: "alert", text: message, attrs: { role: "alert" } }))) : null,
     footer([{ label: "도라 입력으로", primary: true, disabled: !canStepTwoContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -678,12 +678,12 @@ function pageThree() {
           ])
         : null,
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
-      kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text }) : null,
+      kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text, attrs: kanText.recognized ? {} : { role: "alert" } }) : null,
     ]),
     indicatorPanel("도라 표시패", "doraIndicators"),
     needsUra ? indicatorPanel("우라도라 표시패", "uraIndicators") : null,
     activePicker ? panel("표시패 선택", [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
-    doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message }))) : null,
+    doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message, attrs: { role: "alert" } }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -870,7 +870,7 @@ function errorResult(errors) {
   return el("section", { className: "result-card" }, [
     el("div", { text: "계산 불가" }),
     el("div", { className: "score", text: "확인 필요" }),
-    ...errors.map((message) => el("div", { className: "alert", text: message })),
+    ...errors.map((message) => el("div", { className: "alert", text: message, attrs: { role: "alert" } })),
   ]);
 }
 

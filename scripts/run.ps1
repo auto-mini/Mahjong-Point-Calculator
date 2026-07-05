@@ -26,7 +26,8 @@ try {
       & $Node "scripts/verify-static-app.js" "dist"
     }
     "test" {
-      & $Node "--test" "tests/domain.test.js"
+      $TestFiles = Get-ChildItem -Path "tests" -Filter "*.test.js" | ForEach-Object { $_.FullName }
+      & $Node "--test" $TestFiles
     }
     "verify" {
       & $Node "scripts/verify-static-app.js" "."
