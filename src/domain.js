@@ -723,7 +723,7 @@ function safeMelds(value) {
 }
 
 function safeIndicators(value) {
-  const input = Array.isArray(value) ? value : [];
+  const input = Array.isArray(value) && value.length <= 5 ? value : [];
   return Array.from({ length: 5 }, (_, index) => safeTile(input[index], ALL_INDICATORS_34));
 }
 

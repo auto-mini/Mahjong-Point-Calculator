@@ -1432,6 +1432,21 @@ test("share state parser rejects oversized meld lists instead of truncating them
   assert.deepEqual(decoded.melds, []);
 });
 
+test("share state parser rejects oversized indicator lists instead of truncating them", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [{ tiles: ["m1", "m2", "m3"] }],
+    winTile: "m3",
+    doraIndicators: ["m1", "m2", "m3", "m4", "m5", "m6"],
+    uraIndicators: ["p1", "p2", "p3", "p4", "p5", "p6"],
+  }));
+  assert.deepEqual(decoded.doraIndicators, [null, null, null, null, null]);
+  assert.deepEqual(decoded.uraIndicators, [null, null, null, null, null]);
+});
+
 test("share state parser rejects oversized payloads", () => {
   assert.equal(decodeShareState(`2~${"A".repeat(5000)}`), null);
 });
