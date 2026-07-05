@@ -244,6 +244,22 @@ test("ippatsu is rejected after a non-chankan kan", () => {
   assert.equal(errors.includes("깡 직후 화료에서는 일발을 선택할 수 없습니다."), true);
 });
 
+test("ippatsu skips the last-kan question unless chankan is selected", () => {
+  const state = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  });
+  const errors = validateState(state);
+  assert.equal(errors.includes("마지막 깡 직후 질문에 응답해주세요."), false);
+  assert.equal(calculate(state).ok, true);
+});
+
 test("rinshan requires a hand quad and last kan type", () => {
   const noQuad = validateState(createStateFromMelds({
     winMethod: "tsumo",

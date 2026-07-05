@@ -363,6 +363,10 @@ function normalizeUiState(rawState) {
   next.riichiSticks = 0;
   next.situation = normalizeSituationForUi(next.situation, next.winMethod, next.melds);
   if (next.situation.chankan || next.situation.rinshan) next.lastKanWin = true;
+  if (next.situation.ippatsu && !next.situation.chankan) {
+    next.lastKanWin = false;
+    next.lastKanClosed = null;
+  }
   if (next.situation.rinshan) {
     const inferredLastKanClosed = inferLastKanClosedFromMelds(next.melds);
     if (inferredLastKanClosed !== null) next.lastKanClosed = inferredLastKanClosed;
@@ -488,6 +492,7 @@ function toggleSituation(key) {
   const hasImpliedLastKanWin = next.chankan || next.rinshan;
   setState({
     situation: next,
+    ...(next.ippatsu && !next.chankan ? { lastKanWin: false, lastKanClosed: null } : {}),
     ...(hadImpliedLastKanWin && !hasImpliedLastKanWin ? { lastKanWin: null, lastKanClosed: null } : {}),
   });
 }
@@ -763,6 +768,7 @@ function pageThree() {
           ])
         : null,
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
+      ippatsuKanNotice(),
       kanText ? el("div", { className: `${kanText.recognized ? "ok-note" : "alert"} kan-note`, text: kanText.text, attrs: kanText.recognized ? {} : { role: "alert" } }) : null,
     ]),
     indicatorPanel("도라 표시패", "doraIndicators"),
@@ -771,6 +777,14 @@ function pageThree() {
     doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message, attrs: doraPageTouched ? { role: "alert" } : {} }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
+}
+
+function ippatsuKanNotice() {
+  if (!state.situation.ippatsu || state.situation.chankan) return null;
+  return el("div", {
+    className: "ok-note kan-note",
+    text: "일발 선택 중입니다.\n깡 직후 타가가 버린 패로 론했다면 일발이 아닙니다. 그런 경우 뒤로 가서 일발을 해제하세요.",
+  });
 }
 
 function lastKanClosedQuestion() {
@@ -1214,7 +1228,7 @@ function needsLastKanClosedQuestion() {
 }
 
 function shouldAskLastKanWinQuestion() {
-  return !state.situation.chankan && !state.situation.rinshan;
+  return !state.situation.chankan && !state.situation.rinshan && !state.situation.ippatsu;
 }
 
 function shouldAskLastKanClosedQuestion() {

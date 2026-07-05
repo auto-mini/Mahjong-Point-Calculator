@@ -783,7 +783,7 @@ function requiredDoraIndicatorCount(state) {
 
 function isRequiredDoraCountPending(state) {
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
-  if (!state.situation?.rinshan && !state.situation?.chankan && state.lastKanWin === null) return true;
+  if (!state.situation?.rinshan && !state.situation?.chankan && !state.situation?.ippatsu && state.lastKanWin === null) return true;
   return state.situation?.rinshan && resolvedLastKanClosed(state) === null && quads.length > 0;
 }
 
@@ -844,7 +844,7 @@ export function validateState(state) {
   if (state.situation?.rinshan && !quads.length) errors.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
   if (state.situation?.rinshan && state.lastKanWin === false) errors.push("영상개화는 깡 직후 화료여야 합니다.");
   if (state.situation?.rinshan && resolvedLastKanClosed(state) === null && quads.length) errors.push("쯔모 직전 깡 종류를 선택해주세요.");
-  if (!state.situation?.rinshan && !state.situation?.chankan && state.lastKanWin === null) errors.push("마지막 깡 직후 질문에 응답해주세요.");
+  if (!state.situation?.rinshan && !state.situation?.chankan && !state.situation?.ippatsu && state.lastKanWin === null) errors.push("마지막 깡 직후 질문에 응답해주세요.");
   if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation?.rinshan) errors.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);
   if (hasOpen && (state.situation?.riichi || state.situation?.doubleRiichi || state.situation?.ippatsu)) {
