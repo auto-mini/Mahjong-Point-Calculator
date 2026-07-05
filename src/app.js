@@ -302,8 +302,8 @@ function nav() {
     el("button", { className: "recent-button", text: "최근계산", ariaLabel: "최근계산 열기", onClick: () => openRecent() }),
     el("button", {
       className: "touch-toggle",
-      text: largeTouch ? "작은 터치" : "큰 터치",
-      ariaLabel: largeTouch ? "작은 터치 모드로 전환" : "큰 터치 모드로 전환",
+      text: largeTouch ? "기본 버튼" : "버튼 확대",
+      ariaLabel: largeTouch ? "기본 버튼 크기로 전환" : "버튼 확대 모드로 전환",
       ariaPressed: largeTouch,
       onClick: () => setLargeTouchPreference(!largeTouch),
     }),
