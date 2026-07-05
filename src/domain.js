@@ -707,7 +707,8 @@ function safeSituation(value) {
   const base = defaultState().situation;
   if (!value || typeof value !== "object") return base;
   const next = Object.fromEntries(Object.keys(base).map((key) => [key, safeBoolean(value[key])]));
-  if (!Object.entries(next).some(([key, active]) => key !== "none" && active)) next.none = true;
+  const hasActiveSituation = Object.entries(next).some(([key, active]) => key !== "none" && active);
+  next.none = !hasActiveSituation;
   return next;
 }
 

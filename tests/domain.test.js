@@ -1412,6 +1412,21 @@ test("share state parser restores empty situation as none selected", () => {
   assert.equal(decoded.situation.doubleRiichi, false);
 });
 
+test("share state parser clears none when a situation is selected", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { none: true, riichi: true },
+    melds: [{ tiles: ["m1", "m2", "m3"] }],
+    winTile: "m3",
+    doraIndicators: ["p1"],
+  }));
+  assert.equal(decoded.situation.none, false);
+  assert.equal(decoded.situation.riichi, true);
+});
+
 test("share state parser clamps honba to the supported UI range", () => {
   const decoded = decodeShareState(payload({
     v: 1,
