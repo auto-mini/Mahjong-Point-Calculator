@@ -1700,6 +1700,85 @@ test("compact share state parser rejects malformed payloads", () => {
   assert.equal(decodeShareState("2~0000~~~~~~extra"), null);
 });
 
+test("compact share state preserves last-kan judgement fields", () => {
+  const state = createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    lastKanWin: true,
+    lastKanClosed: false,
+    melds: [
+      { tiles: ["m1", "m1", "m1", "m1"], open: true },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s3", "s4", "s5"] },
+      { tiles: ["m7", "m8", "m9"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["p9"],
+  });
+  const decoded = decodeShareState(encodeShareState(state));
+  assert.equal(decoded.lastKanWin, true);
+  assert.equal(decoded.lastKanClosed, false);
+  assert.equal(decoded.situation.rinshan, true);
+});
+
+test("compact share state keeps ippatsu result calculable without last-kan question", () => {
+  const state = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    lastKanWin: false,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  });
+  const result = calculate(decodeShareState(encodeShareState(state)));
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 3);
+  assert.equal(result.fu, 30);
+});
+
+test("compact share state keeps chankan from requiring the robbed kan dora", () => {
+  const state = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  const result = calculate(decodeShareState(encodeShareState(state)));
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 2);
+  assert.equal(result.fu, 30);
+});
+
+test("compact share state keeps ron-after-kan dora minimum after restore", () => {
+  const baseState = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    lastKanWin: true,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  const restoredMissingIndicator = calculate(decodeShareState(encodeShareState(baseState)));
+  assert.equal(restoredMissingIndicator.ok, false);
+
+  const restoredWithIndicator = calculate(decodeShareState(encodeShareState({
+    ...baseState,
+    doraIndicators: ["east", "south"],
+  })));
+  assert.equal(restoredWithIndicator.ok, true);
+});
+
 test("recent item sanitizer keeps only restorable valid calculations", () => {
   const goodState = createStateFromMelds({
     winMethod: "ron",

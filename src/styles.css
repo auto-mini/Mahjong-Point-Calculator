@@ -352,7 +352,15 @@ h1 {
 
 .large-touch .recent-button,
 .large-touch .touch-toggle {
-  min-height: 38px;
+  min-height: 42px;
+}
+
+.large-touch .wind-grid {
+  --wind-chip-size: clamp(42px, 12vw, 46px);
+}
+
+.large-touch .chip-grid.two .chip {
+  min-height: 42px;
 }
 
 .large-touch .honba-grid {
