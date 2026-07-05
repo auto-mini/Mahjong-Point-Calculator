@@ -247,6 +247,10 @@ button {
   font-weight: 800;
 }
 
+.page-title {
+  min-width: 0;
+}
+
 h1,
 h2,
 h3,
@@ -255,8 +259,9 @@ p {
 }
 
 h1 {
-  font-size: 24px;
+  font-size: clamp(18px, 5.8vw, 24px);
   line-height: 1.18;
+  white-space: nowrap;
 }
 
 .panel {
@@ -602,6 +607,10 @@ h1 {
   white-space: nowrap;
 }
 
+.tile-caption.red-five-caption {
+  color: var(--red);
+}
+
 .tile-grid {
   --tile-w: clamp(24.5px, 7.85vw, 28px);
   --tile-h: calc(var(--tile-w) * 1.326);
@@ -677,6 +686,19 @@ h1 {
   gap: 10px;
 }
 
+.large-touch .selected-tile-row {
+  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-h: calc(var(--tile-w) * 1.326);
+}
+
+.large-touch .selected-tile-row .tile-button {
+  min-height: 54px;
+}
+
+.large-touch .selected-tile-row .tile-caption {
+  font-size: 10px;
+}
+
 .candidate-section {
   display: grid;
   gap: 12px;
@@ -743,11 +765,13 @@ h1 {
 }
 
 .large-touch .win-candidates {
-  display: block;
+  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-h: calc(var(--tile-w) * 1.326);
+  gap: 8px;
 }
 
-.large-touch .win-candidates .tile-grid {
-  width: 100%;
+.large-touch .win-candidates .tile-button {
+  min-height: 54px;
 }
 
 .candidate-box {

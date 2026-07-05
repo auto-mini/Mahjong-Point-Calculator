@@ -292,7 +292,7 @@ function nav() {
   const titles = ["화료/국 정보", "손패 입력", "도라/우라", "결과"];
   const topbar = el("section", { className: "topbar" });
   topbar.append(step > 1 ? el("button", { className: "back-button", text: "<", ariaLabel: "이전 페이지로", onClick: () => goBack() }) : el("span", { className: "back-spacer" }));
-  const title = el("div", {}, [
+  const title = el("div", { className: "page-title" }, [
     el("div", { className: "page-kicker", text: `${step}/4` }),
     el("h1", { text: titles[step - 1] }),
   ]);
@@ -508,9 +508,7 @@ function pageTwo() {
     complete
       ? panel("화료패", [
           !state.winTile ? el("p", { className: "panel-note win-note", text: WIN_TILE_REQUIRED_TEXT }) : null,
-          el("div", { className: "win-candidates" }, largeTouch
-            ? [tileGrid(winCandidates, state.winTile, (tile) => setState({ winTile: tile }))]
-            : winCandidates.map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
+          el("div", { className: "win-candidates" }, winCandidates.map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
     !complete
@@ -578,7 +576,7 @@ function largeTouchTileGroups(tiles) {
 function tileButton(tile, onClick, active = false) {
   return el("button", { className: `tile-button ${active ? "active" : ""}`, onClick, ariaLabel: tileLabel(tile), ariaPressed: active }, [
     tileFace(tile, active),
-    el("span", { className: "tile-caption", text: compactTileLabel(tile) }),
+    el("span", { className: `tile-caption ${tile.endsWith("5r") ? "red-five-caption" : ""}`, text: compactTileLabel(tile) }),
   ]);
 }
 
