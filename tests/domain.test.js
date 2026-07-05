@@ -960,6 +960,101 @@ test("yakuman is detected and not scored", () => {
   assert.equal(result.errors[0].startsWith("역만 손패입니다."), true);
 });
 
+test("explicit yakuman patterns are detected and not scored", () => {
+  const cases = [
+    {
+      name: "대삼원",
+      melds: [
+        { tiles: ["white", "white", "white"] },
+        { tiles: ["green", "green", "green"] },
+        { tiles: ["red", "red", "red"] },
+        { tiles: ["m2", "m3", "m4"] },
+        { tiles: ["p5", "p5"] },
+      ],
+      winTile: "p5",
+    },
+    {
+      name: "자일색",
+      melds: [
+        { tiles: ["east", "east", "east"] },
+        { tiles: ["south", "south", "south"] },
+        { tiles: ["west", "west", "west"] },
+        { tiles: ["white", "white", "white"] },
+        { tiles: ["red", "red"] },
+      ],
+      winTile: "red",
+    },
+    {
+      name: "녹일색",
+      melds: [
+        { tiles: ["s2", "s3", "s4"] },
+        { tiles: ["s2", "s3", "s4"] },
+        { tiles: ["s6", "s6", "s6"] },
+        { tiles: ["s8", "s8", "s8"] },
+        { tiles: ["green", "green"] },
+      ],
+      winTile: "green",
+    },
+    {
+      name: "청노두",
+      melds: [
+        { tiles: ["m1", "m1", "m1"] },
+        { tiles: ["m9", "m9", "m9"] },
+        { tiles: ["p1", "p1", "p1"] },
+        { tiles: ["p9", "p9", "p9"] },
+        { tiles: ["s1", "s1"] },
+      ],
+      winTile: "s1",
+    },
+    {
+      name: "소사희",
+      melds: [
+        { tiles: ["east", "east", "east"] },
+        { tiles: ["south", "south", "south"] },
+        { tiles: ["west", "west", "west"] },
+        { tiles: ["m2", "m3", "m4"] },
+        { tiles: ["north", "north"] },
+      ],
+      winTile: "north",
+    },
+    {
+      name: "대사희",
+      melds: [
+        { tiles: ["east", "east", "east"] },
+        { tiles: ["south", "south", "south"] },
+        { tiles: ["west", "west", "west"] },
+        { tiles: ["north", "north", "north"] },
+        { tiles: ["m2", "m2"] },
+      ],
+      winTile: "m2",
+    },
+    {
+      name: "사암각",
+      melds: [
+        { tiles: ["m2", "m2", "m2"] },
+        { tiles: ["m6", "m6", "m6"] },
+        { tiles: ["p3", "p3", "p3"] },
+        { tiles: ["s4", "s4", "s4"] },
+        { tiles: ["p8", "p8"] },
+      ],
+      winTile: "p8",
+    },
+  ];
+
+  for (const item of cases) {
+    const result = calc({
+      winMethod: "ron",
+      roundWind: "east",
+      seatWind: "south",
+      melds: item.melds,
+      winTile: item.winTile,
+      doraIndicators: ["m1"],
+    });
+    assert.equal(result.ok, false, item.name);
+    assert.equal(result.errors[0].includes(item.name), true, item.name);
+  }
+});
+
 test("churen poutou is detected as yakuman and not scored", () => {
   const result = calc({
     winMethod: "ron",
