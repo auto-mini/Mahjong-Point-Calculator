@@ -972,9 +972,12 @@ export function candidateMeldsFor(tile) {
 }
 
 export function winningTileCandidates(melds, { chankan = false } = {}) {
+  const handMelds = (melds || [])
+    .map((raw) => raw.kind ? raw : createMeld(raw.tiles || [], raw.open))
+    .filter((meld) => meld.kind !== "unknown");
   if (chankan) {
     const sequenceTiles = new Set();
-    for (const shape of decomposeHand(melds || [])) {
+    for (const shape of decomposeHand(handMelds)) {
       if (shape.type !== "standard") continue;
       for (const meld of shape.melds) {
         if (meld.open || meld.kind !== "sequence") continue;
@@ -982,12 +985,13 @@ export function winningTileCandidates(melds, { chankan = false } = {}) {
       }
     }
     if (!sequenceTiles.size) return [];
-    return uniquePhysicalTiles(flattenMelds((melds || []).map((raw) => raw.kind ? raw : createMeld(raw.tiles || [], raw.open)).filter((meld) => !meld.open && meld.kind !== "quad")))
-      .filter((tile) => sequenceTiles.has(normalizeTile(tile)));
+    const handTiles = flattenMelds(handMelds);
+    return uniquePhysicalTiles(flattenMelds(handMelds.filter((meld) => !meld.open && meld.kind !== "quad")))
+      .filter((tile) => sequenceTiles.has(normalizeTile(tile)))
+      .filter((tile) => sameNormalizedTileCount(handTiles, tile) === 1);
   }
   const eligible = [];
-  for (const raw of melds || []) {
-    const meld = raw.kind ? raw : createMeld(raw.tiles || [], raw.open);
+  for (const meld of handMelds) {
     if (meld.open || meld.kind === "quad") continue;
     eligible.push(meld);
   }

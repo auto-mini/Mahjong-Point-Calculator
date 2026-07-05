@@ -457,7 +457,7 @@ test("chankan rejects extra visible copies of the robbed tile", () => {
   assert.equal(extraIndicator.includes("창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다."), true);
 });
 
-test("chankan candidates come from automatic decomposition, not input grouping", () => {
+test("chankan candidates hide duplicate tiles that cannot be robbed", () => {
   const melds = [
     { tiles: ["m1", "m1", "m1"] },
     { tiles: ["m2", "m2", "m2"] },
@@ -466,7 +466,7 @@ test("chankan candidates come from automatic decomposition, not input grouping",
     { tiles: ["p8", "p8"] },
   ];
   const candidates = winningTileCandidates(melds, { chankan: true });
-  assert.deepEqual(candidates, ["m1", "m2", "m3", "p4", "p5", "p6"]);
+  assert.deepEqual(candidates, ["p4", "p5", "p6"]);
 
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",
@@ -477,7 +477,7 @@ test("chankan candidates come from automatic decomposition, not input grouping",
     winTile: "m2",
     doraIndicators: ["p9"],
   }));
-  assert.equal(errors.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), false);
+  assert.equal(errors.includes("창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다."), true);
 });
 
 test("closed pinfu ron is 30 fu and scores 1000 for child 1 han", () => {
