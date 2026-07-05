@@ -1396,6 +1396,22 @@ test("share state parser allowlists fields and drops unknown melds", () => {
   assert.deepEqual(decoded.doraIndicators, ["m1", null, "p1", null, null]);
 });
 
+test("share state parser restores empty situation as none selected", () => {
+  const decoded = decodeShareState(payload({
+    v: 1,
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { none: false },
+    melds: [{ tiles: ["m1", "m2", "m3"] }],
+    winTile: "m3",
+    doraIndicators: ["p1"],
+  }));
+  assert.equal(decoded.situation.none, true);
+  assert.equal(decoded.situation.riichi, false);
+  assert.equal(decoded.situation.doubleRiichi, false);
+});
+
 test("share state parser clamps honba to the supported UI range", () => {
   const decoded = decodeShareState(payload({
     v: 1,

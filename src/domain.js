@@ -706,7 +706,9 @@ function safeTile(value, allowedTiles) {
 function safeSituation(value) {
   const base = defaultState().situation;
   if (!value || typeof value !== "object") return base;
-  return Object.fromEntries(Object.keys(base).map((key) => [key, safeBoolean(value[key])]));
+  const next = Object.fromEntries(Object.keys(base).map((key) => [key, safeBoolean(value[key])]));
+  if (!Object.entries(next).some(([key, active]) => key !== "none" && active)) next.none = true;
+  return next;
 }
 
 function safeMelds(value) {
