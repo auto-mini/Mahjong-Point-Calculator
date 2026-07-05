@@ -79,6 +79,7 @@ let modalReturnFocus = null;
 let latestResult = null;
 let renderVersion = 0;
 let largeTouch = loadLargeTouchPreference();
+let fuDetailsExpanded = false;
 const TAP_ACTIVATION_DELAY_MS = 140;
 
 render();
@@ -959,10 +960,18 @@ function fuBreakdownRows(result) {
       if (!meldSummaryAdded) {
         rows.push(el("button", {
           className: "result-line result-line-button",
-          ariaLabel: `커쯔/깡쯔 +${meldTotal}`,
-          onClick: () => openFuDetails(meldLines),
-          title: "커쯔/깡쯔 세부 부수 보기",
-        }, [el("span", { text: "커쯔/깡쯔 " }), el("span", { text: `+${meldTotal}` })]));
+          ariaLabel: `커쯔/깡쯔 +${meldTotal} ${fuDetailsExpanded ? "접기" : "펼치기"}`,
+          ariaPressed: fuDetailsExpanded,
+          attrs: { "aria-expanded": String(fuDetailsExpanded) },
+          onClick: () => toggleFuDetails(),
+          title: fuDetailsExpanded ? "커쯔/깡쯔 세부 부수 접기" : "커쯔/깡쯔 세부 부수 보기",
+        }, [
+          el("span", { text: "커쯔/깡쯔 " }),
+          el("span", { className: "result-line-right", text: `+${meldTotal} ${fuDetailsExpanded ? "▲" : "▼"}` }),
+        ]));
+        if (fuDetailsExpanded) {
+          rows.push(el("div", { className: "fu-detail-lines" }, meldLines.map((detailLine) => pairRow("result-line fu-detail-line", detailLine.name, `+${detailLine.fu}`))));
+        }
         meldSummaryAdded = true;
       }
       continue;
@@ -979,8 +988,9 @@ function isMeldFuLine(line) {
   return / (커쯔|깡쯔)$/.test(line.name);
 }
 
-function openFuDetails(lines) {
-  openModal({ type: "fu-details", lines }, () => document.querySelector(".result-line-button"));
+function toggleFuDetails() {
+  fuDetailsExpanded = !fuDetailsExpanded;
+  render();
 }
 
 function totalScoreDisplay(score) {
@@ -1056,6 +1066,7 @@ function clearStepTransientState() {
   selectedCandidate = null;
   picker = null;
   pendingIndicatorFocus = null;
+  fuDetailsExpanded = false;
 }
 
 function maxReachableStep() {
@@ -1211,6 +1222,7 @@ function resetAll() {
   modalReturnFocus = null;
   initialShareError = null;
   lastSavedRecentKey = null;
+  fuDetailsExpanded = false;
   location.hash = "";
   render();
 }
@@ -1450,14 +1462,6 @@ function renderModal() {
         ]),
       )),
     ];
-  } else if (modal?.type === "fu-details") {
-    body = [
-      el("div", { className: "sheet-header" }, [
-        el("h2", { text: "커쯔/깡쯔 세부" }),
-        el("button", { className: "icon-button", text: "닫기", onClick: close }),
-      ]),
-      el("div", { className: "result-lines" }, modal.lines.map((line) => pairRow("result-line", line.name, `+${line.fu}`))),
-    ];
   } else if (modal?.type === "restore-error") {
     body = [
       el("div", { className: "sheet-header" }, [
@@ -1491,7 +1495,6 @@ function renderModal() {
 function modalLabel() {
   if (modal === "recent") return "최근계산";
   if (modal?.type === "alternatives") return "동점 해석";
-  if (modal?.type === "fu-details") return "커쯔/깡쯔 세부";
   if (modal?.type === "restore-error") return "복원 실패";
   return "공유 링크";
 }
@@ -1572,6 +1575,7 @@ function applyRestoredState(nextState, { stepOverride = null, syncHash = false }
   modal = null;
   modalReturnFocus = null;
   lastSavedRecentKey = null;
+  fuDetailsExpanded = false;
   if (syncHash) history.replaceState(null, "", `${location.pathname}#s=${encodeShareState(state)}`);
   render();
 }
