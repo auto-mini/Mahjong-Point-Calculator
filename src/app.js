@@ -19,6 +19,7 @@
 } from "./domain.js";
 
 const RECENT_KEY = "riichi-fu-calculator-recent-v1";
+const LARGE_TOUCH_KEY = "riichi-fu-calculator-large-touch-v1";
 const RECENT_STORAGE_MAX_LENGTH = 80_000;
 const app = document.querySelector("#app");
 const TILE_ASSET_ROOT = "./assets/tiles/b2";
@@ -71,14 +72,25 @@ let step = stepForLoadedState(state);
 let selectedTile = null;
 let selectedCandidate = null;
 let picker = null;
+let pendingIndicatorFocus = null;
+let doraPageTouched = false;
 let modal = null;
 let modalReturnFocus = null;
 let latestResult = null;
 let renderVersion = 0;
+let largeTouch = loadLargeTouchPreference();
 const TAP_ACTIVATION_DELAY_MS = 140;
 
 render();
 window.addEventListener("hashchange", restoreStateFromHash);
+window.addEventListener("keydown", handleGlobalKeydown);
+
+function handleGlobalKeydown(event) {
+  if (event.key !== "Escape" && event.key !== "Esc") return;
+  if (modal || !picker) return;
+  event.preventDefault();
+  closeIndicatorPicker(picker);
+}
 
 function loadInitialState() {
   if (location.hash.startsWith("#s=")) {
@@ -87,6 +99,24 @@ function loadInitialState() {
     initialShareError = "공유 링크를 읽을 수 없음";
   }
   return normalizeUiState(defaultState());
+}
+
+function loadLargeTouchPreference() {
+  try {
+    return localStorage.getItem(LARGE_TOUCH_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setLargeTouchPreference(next) {
+  largeTouch = next;
+  try {
+    localStorage.setItem(LARGE_TOUCH_KEY, next ? "1" : "0");
+  } catch {
+    // UI preference persistence is optional; the in-memory mode still applies.
+  }
+  render();
 }
 
 function restoreStateFromHash() {
@@ -98,6 +128,8 @@ function restoreStateFromHash() {
       selectedTile = null;
       selectedCandidate = null;
       picker = null;
+      pendingIndicatorFocus = null;
+      doraPageTouched = false;
       modal = null;
       modalReturnFocus = null;
       lastSavedRecentKey = null;
@@ -113,6 +145,8 @@ function restoreStateFromHash() {
     selectedTile = null;
     selectedCandidate = null;
     picker = null;
+    pendingIndicatorFocus = null;
+    doraPageTouched = false;
     modal = null;
     modalReturnFocus = null;
     lastSavedRecentKey = null;
@@ -235,6 +269,7 @@ function render({ preserveModalFocus = false } = {}) {
   const modalFocus = preserveModalFocus ? modalFocusSnapshot() : null;
   renderVersion += 1;
   latestResult = calculate(state);
+  app.classList.toggle("large-touch", largeTouch);
   clearModalNodes();
   app.replaceChildren(nav(), page());
   const modalNodes = renderModal();
@@ -244,6 +279,7 @@ function render({ preserveModalFocus = false } = {}) {
   document.body.append(...modalNodes);
   if (restoreModalFocusSnapshot(modalFocus)) return;
   focusModal();
+  if (!modalNodes.length) focusIndicatorControl();
 }
 
 function clearModalNodes() {
@@ -261,7 +297,16 @@ function nav() {
     el("h1", { text: titles[step - 1] }),
   ]);
   topbar.append(title);
-  topbar.append(el("button", { className: "recent-button", text: "최근계산", ariaLabel: "최근계산 열기", onClick: () => openRecent() }));
+  topbar.append(el("div", { className: "top-actions" }, [
+    el("button", { className: "recent-button", text: "최근계산", ariaLabel: "최근계산 열기", onClick: () => openRecent() }),
+    el("button", {
+      className: "touch-toggle",
+      text: largeTouch ? "작은 터치" : "큰 터치",
+      ariaLabel: largeTouch ? "작은 터치 모드로 전환" : "큰 터치 모드로 전환",
+      ariaPressed: largeTouch,
+      onClick: () => setLargeTouchPreference(!largeTouch),
+    }),
+  ]));
   return topbar;
 }
 
@@ -451,6 +496,7 @@ function pageTwo() {
   const complete = isHandComplete();
   const errors = visibleHandErrors();
   const winHighlight = { used: false };
+  const winCandidates = currentWinningTileCandidates();
   return el("div", {}, [
     panel("현재 손패", [
       state.melds.length ? el("div", { className: "meld-list" }, state.melds.map((meld, index) => meldBox(meld, index, winHighlight))) : null,
@@ -462,7 +508,9 @@ function pageTwo() {
     complete
       ? panel("화료패", [
           !state.winTile ? el("p", { className: "panel-note win-note", text: WIN_TILE_REQUIRED_TEXT }) : null,
-          el("div", { className: "win-candidates" }, currentWinningTileCandidates().map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
+          el("div", { className: "win-candidates" }, largeTouch
+            ? [tileGrid(winCandidates, state.winTile, (tile) => setState({ winTile: tile }))]
+            : winCandidates.map((tile) => tileButton(tile, () => setState({ winTile: tile }), state.winTile === tile))),
         ])
       : null,
     !complete
@@ -495,7 +543,7 @@ function meldBox(meld, index, winHighlight) {
 }
 
 function tileGrid(tiles, activeTile, onSelect) {
-  const groups = [
+  const groups = largeTouch ? largeTouchTileGroups(tiles) : [
     ["만", orderedSuitTiles(tiles, "m")],
     ["통", orderedSuitTiles(tiles, "p")],
     ["삭", orderedSuitTiles(tiles, "s")],
@@ -504,13 +552,27 @@ function tileGrid(tiles, activeTile, onSelect) {
   return el(
     "div",
     { className: "tile-grid" },
-    groups.map(([label, group]) =>
+    groups.filter(([, group]) => group.length).map(([label, group]) =>
       el("div", { className: "tile-grid-row" }, [
         el("div", { className: "label", text: label }),
         el("div", { className: "tile-row" }, group.map((tile) => tileButton(tile, () => onSelect(tile), activeTile === tile))),
       ]),
     ),
   );
+}
+
+function largeTouchTileGroups(tiles) {
+  const groups = [];
+  for (const [label, suit] of [["만", "m"], ["통", "p"], ["삭", "s"]]) {
+    const suitTiles = orderedSuitTiles(tiles, suit);
+    const firstRow = suitTiles.filter((tile) => !tile.endsWith("5r") && Number(tile[1]) <= 5);
+    const secondRow = suitTiles.filter((tile) => tile.endsWith("5r") || Number(tile[1]) >= 6);
+    groups.push([label, firstRow]);
+    groups.push([firstRow.length ? "" : label, secondRow]);
+  }
+  groups.push(["풍", ["east", "south", "west", "north"].filter((tile) => tiles.includes(tile))]);
+  groups.push(["삼원", ["white", "green", "red"].filter((tile) => tiles.includes(tile))]);
+  return groups;
 }
 
 function tileButton(tile, onClick, active = false) {
@@ -692,8 +754,14 @@ function pageThree() {
     panel(shouldAskLastKanWin ? "깡 직후에 화료했나요?" : "깡도라 판정", [
       shouldAskLastKanWin
         ? el("div", { className: "button-grid" }, [
-            button("예", state.lastKanWin === true, () => setState({ lastKanWin: true, lastKanClosed: null }), "primary"),
-            button("아니오", state.lastKanWin === false, () => setState({ lastKanWin: false, lastKanClosed: null })),
+            button("예", state.lastKanWin === true, () => {
+              markDoraPageTouched();
+              setState({ lastKanWin: true, lastKanClosed: null });
+            }, "primary"),
+            button("아니오", state.lastKanWin === false, () => {
+              markDoraPageTouched();
+              setState({ lastKanWin: false, lastKanClosed: null });
+            }),
           ])
         : null,
       shouldAskLastKanClosed ? lastKanClosedQuestion() : null,
@@ -701,8 +769,8 @@ function pageThree() {
     ]),
     indicatorPanel("도라 표시패", "doraIndicators"),
     needsUra ? indicatorPanel("우라도라 표시패", "uraIndicators") : null,
-    activePicker ? panel("표시패 선택", [tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker))]) : null,
-    doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message, attrs: { role: "alert" } }))) : null,
+    activePicker ? indicatorPickerPanel(activePicker) : null,
+    doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message, attrs: doraPageTouched ? { role: "alert" } : {} }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
 }
@@ -711,9 +779,31 @@ function lastKanClosedQuestion() {
   return el("div", { className: "kan-extra" }, [
     el("div", { className: "label", text: "쯔모 직전 깡 종류" }),
     el("div", { className: "button-grid" }, [
-      button("안깡", state.lastKanClosed === true, () => setState({ lastKanClosed: true }), "primary"),
-      button("안깡 아님", state.lastKanClosed === false, () => setState({ lastKanClosed: false })),
+      button("안깡", state.lastKanClosed === true, () => {
+        markDoraPageTouched();
+        setState({ lastKanClosed: true });
+      }, "primary"),
+      button("안깡 아님", state.lastKanClosed === false, () => {
+        markDoraPageTouched();
+        setState({ lastKanClosed: false });
+      }),
     ]),
+  ]);
+}
+
+function indicatorPickerPanel(activePicker) {
+  return el("section", {
+    className: "panel indicator-picker",
+    onKeydown: (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeIndicatorPicker(activePicker);
+    },
+    attrs: { tabindex: "-1" },
+  }, [
+    el("h2", { text: "표시패 선택" }),
+    tileGrid(ALL_INDICATORS_34, null, (tile) => setIndicatorTile(tile, activePicker)),
   ]);
 }
 
@@ -728,15 +818,17 @@ function indicatorPanel(title, key) {
           className: `slot ${picker?.key === key && picker.index === index ? "active" : ""}`,
           ariaLabel: tile ? `${title} ${index + 1}: ${tileLabel(tile)}` : `${title} ${index + 1} 선택`,
           ariaPressed: picker?.key === key && picker.index === index,
+          attrs: { "data-indicator-slot": `${key}-${index}` },
           onClick: () => {
+            markDoraPageTouched();
             if (tile) {
               const next = [...values];
               next[index] = null;
               picker = null;
+              pendingIndicatorFocus = { key, index };
               setState({ [key]: next });
             } else if (picker?.key === key && picker.index === index) {
-              picker = null;
-              render();
+              closeIndicatorPicker({ key, index });
             } else {
               picker = { key, index };
               render();
@@ -756,8 +848,20 @@ function setIndicatorTile(tile, target = picker) {
   if (!target) return;
   const next = normalizedSlots(state[target.key]);
   next[target.index] = tile;
+  markDoraPageTouched();
+  pendingIndicatorFocus = target;
   picker = null;
   setState({ [target.key]: next });
+}
+
+function closeIndicatorPicker(target = picker) {
+  if (target) pendingIndicatorFocus = target;
+  picker = null;
+  render();
+}
+
+function markDoraPageTouched() {
+  doraPageTouched = true;
 }
 
 function kanJudgementText() {
@@ -914,6 +1018,7 @@ function goBack() {
   if (nextStep === step) return;
   clearStepTransientState();
   step = nextStep;
+  if (step !== 3) doraPageTouched = false;
   render();
 }
 
@@ -926,6 +1031,7 @@ function goNext() {
   if (nextStep === step) return;
   clearStepTransientState();
   step = nextStep;
+  if (step === 3) doraPageTouched = false;
   render();
 }
 
@@ -933,6 +1039,7 @@ function clearStepTransientState() {
   selectedTile = null;
   selectedCandidate = null;
   picker = null;
+  pendingIndicatorFocus = null;
 }
 
 function maxReachableStep() {
@@ -1082,6 +1189,8 @@ function resetAll() {
   selectedTile = null;
   selectedCandidate = null;
   picker = null;
+  pendingIndicatorFocus = null;
+  doraPageTouched = false;
   modal = null;
   modalReturnFocus = null;
   initialShareError = null;
@@ -1380,6 +1489,21 @@ function focusModal() {
   });
 }
 
+function focusIndicatorControl() {
+  const target = pendingIndicatorFocus;
+  pendingIndicatorFocus = null;
+  requestAnimationFrame(() => {
+    if (picker) {
+      const firstTile = document.querySelector(".indicator-picker .tile-button");
+      if (firstTile instanceof HTMLElement) firstTile.focus();
+      return;
+    }
+    if (!target) return;
+    const slot = document.querySelector(`[data-indicator-slot="${target.key}-${target.index}"]`);
+    if (slot instanceof HTMLElement) slot.focus();
+  });
+}
+
 function trapModalFocus(event, close) {
   if (event.key === "Escape") {
     event.preventDefault();
@@ -1427,6 +1551,8 @@ function applyRestoredState(nextState, { stepOverride = null, syncHash = false }
   selectedTile = null;
   selectedCandidate = null;
   picker = null;
+  pendingIndicatorFocus = null;
+  doraPageTouched = false;
   modal = null;
   modalReturnFocus = null;
   lastSavedRecentKey = null;

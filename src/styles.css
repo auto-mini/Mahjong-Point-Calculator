@@ -48,6 +48,7 @@ button {
 
 .back-button.tap-press,
 .recent-button.tap-press,
+.touch-toggle.tap-press,
 .icon-button.tap-press,
 .choice.tap-press,
 .chip.tap-press,
@@ -60,6 +61,7 @@ button {
 .meld-remove.tap-press,
 .back-button:active,
 .recent-button:active,
+.touch-toggle:active,
 .icon-button:active,
 .choice:active,
 .chip:active,
@@ -90,6 +92,7 @@ button {
 @media (prefers-reduced-motion: no-preference) {
   .back-button,
   .recent-button,
+  .touch-toggle,
   .icon-button,
   .choice,
   .chip,
@@ -117,6 +120,7 @@ button {
 
   .back-button.tap-press,
   .recent-button.tap-press,
+  .touch-toggle.tap-press,
   .icon-button.tap-press,
   .choice.tap-press,
   .chip.tap-press,
@@ -129,6 +133,7 @@ button {
   .meld-remove.tap-press,
   .back-button.tap-snap,
   .recent-button.tap-snap,
+  .touch-toggle.tap-snap,
   .icon-button.tap-snap,
   .choice.tap-snap,
   .chip.tap-snap,
@@ -181,7 +186,7 @@ button {
 
 .topbar {
   display: grid;
-  grid-template-columns: 38px 1fr 92px;
+  grid-template-columns: 38px 1fr 84px;
   gap: 8px;
   align-items: start;
   margin-bottom: 18px;
@@ -189,6 +194,7 @@ button {
 
 .back-button,
 .recent-button,
+.touch-toggle,
 .icon-button {
   border: 1px solid var(--line);
   background: var(--control);
@@ -215,6 +221,24 @@ button {
 .recent-button {
   height: 34px;
   font-size: 12px;
+}
+
+.top-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.touch-toggle {
+  min-height: 34px;
+  width: 100%;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.touch-toggle[aria-pressed="true"] {
+  background: var(--deep);
+  border-color: var(--deep);
+  color: #fff;
 }
 
 .page-kicker {
@@ -309,6 +333,31 @@ h1 {
   display: grid;
   place-items: center;
   line-height: 1;
+}
+
+.large-touch .topbar {
+  grid-template-columns: 44px 1fr 92px;
+}
+
+.large-touch .back-button,
+.large-touch .back-spacer {
+  width: 42px;
+  min-height: 42px;
+}
+
+.large-touch .recent-button,
+.large-touch .touch-toggle {
+  min-height: 38px;
+}
+
+.large-touch .honba-grid {
+  --honba-chip-size: clamp(42px, 12vw, 46px);
+  grid-template-columns: repeat(5, var(--honba-chip-size));
+  gap: 7px;
+}
+
+.large-touch .honba-grid .chip {
+  font-size: 14px;
 }
 
 .chip-grid.two {
@@ -591,6 +640,37 @@ h1 {
   font-size: clamp(7px, 1.9vw, 8px);
 }
 
+.large-touch .tile-grid {
+  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-h: calc(var(--tile-w) * 1.326);
+  gap: 8px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.large-touch .tile-grid-row {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.large-touch .tile-grid-row .label {
+  font-size: 10px;
+  text-align: center;
+}
+
+.large-touch .tile-grid-row .tile-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.large-touch .tile-grid-row .tile-button {
+  min-height: 54px;
+}
+
+.large-touch .tile-grid-row .tile-caption {
+  font-size: 10px;
+}
+
 .selected-tile-row {
   display: flex;
   align-items: center;
@@ -662,6 +742,14 @@ h1 {
   display: none;
 }
 
+.large-touch .win-candidates {
+  display: block;
+}
+
+.large-touch .win-candidates .tile-grid {
+  width: 100%;
+}
+
 .candidate-box {
   --tile-w: 27px;
   --tile-h: calc(var(--tile-w) * 1.326);
@@ -672,6 +760,11 @@ h1 {
   display: grid;
   grid-template-columns: repeat(5, 34px);
   justify-content: center;
+  gap: 8px;
+}
+
+.large-touch .slot-row {
+  grid-template-columns: repeat(5, 42px);
   gap: 8px;
 }
 
@@ -690,6 +783,24 @@ h1 {
   padding: 2px;
   color: var(--muted);
   font-weight: 800;
+}
+
+.large-touch .slot {
+  --tile-w: 34px;
+  --tile-h: calc(var(--tile-w) * 1.326);
+  width: 42px;
+  min-height: 56px;
+}
+
+.large-touch .meld-remove {
+  width: 32px;
+  height: 32px;
+  right: -13px;
+  top: -13px;
+}
+
+.large-touch .meld-remove::before {
+  inset: 4px;
 }
 
 .slot .tile {
