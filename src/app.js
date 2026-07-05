@@ -754,7 +754,7 @@ function pageThree() {
   if (!needsUra && picker?.key === "uraIndicators") picker = null;
   const activePicker = picker;
   return el("div", {}, [
-    panel(shouldAskLastKanWin ? "깡 직후에 화료했나요?" : "깡도라 판정", [
+    panel(shouldAskLastKanWin ? lastKanWinQuestionTitle() : "깡도라 판정", [
       shouldAskLastKanWin
         ? el("div", { className: "button-grid" }, [
             button("예", state.lastKanWin === true, () => {
@@ -777,6 +777,10 @@ function pageThree() {
     doraErrors.length ? panel("확인 필요", doraErrors.map((message) => el("div", { className: "alert", text: message, attrs: doraPageTouched ? { role: "alert" } : {} }))) : null,
     footer([{ label: "결과 보기", primary: true, disabled: !canStepThreeContinue(), onClick: () => goNext() }]),
   ]);
+}
+
+function lastKanWinQuestionTitle() {
+  return state.winMethod === "tsumo" ? "본인의 깡 직후에 화료했나요?" : "깡 직후에 화료했나요?";
 }
 
 function ippatsuKanNotice() {
