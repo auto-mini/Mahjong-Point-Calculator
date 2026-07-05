@@ -829,7 +829,9 @@ function fuBreakdownRows(result) {
     }
     rows.push(pairRow("result-line", line.name, `+${line.fu}`));
   }
-  rows.push(el("div", { className: "result-line", ariaLabel: `최종 올림 ${result.rawFu}부 -> ${result.fu}부` }, [el("strong", { text: "최종 올림 " }), el("strong", { text: `${result.rawFu}부 -> ${result.fu}부` })]));
+  const finalFuText = result.rawFu === result.fu ? `${result.fu}부` : `${result.rawFu}부 -> ${result.fu}부`;
+  const finalFuLabel = result.rawFu === result.fu ? "최종 부수" : "최종 올림";
+  rows.push(el("div", { className: "result-line", ariaLabel: `${finalFuLabel} ${finalFuText}` }, [el("strong", { text: `${finalFuLabel} ` }), el("strong", { text: finalFuText })]));
   return rows;
 }
 
