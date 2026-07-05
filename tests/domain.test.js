@@ -979,6 +979,25 @@ test("churen poutou is detected as yakuman and not scored", () => {
   assert.equal(result.errors[0].includes("구련보등"), true);
 });
 
+test("four quads are detected as yakuman and not scored", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2", "m2"], open: true },
+      { tiles: ["p3", "p3", "p3", "p3"], open: true },
+      { tiles: ["s4", "s4", "s4", "s4"] },
+      { tiles: ["white", "white", "white", "white"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "east",
+    doraIndicators: ["m1", "m9", "p1", "p9", "s1"],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].includes("사깡쯔"), true);
+});
+
 test("share state round-trips through URL-safe payload", () => {
   const state = createStateFromMelds({
     winMethod: "ron",

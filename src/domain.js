@@ -427,6 +427,7 @@ function detectYakuman(shape, state, context = null) {
   if (isChurenPoutou(shape)) return "구련보등";
   if (shape.type === "standard") {
     const triplets = shape.melds.filter((meld) => ["triplet", "quad"].includes(meld.kind));
+    if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) return "사깡쯔";
     const tripletTiles = triplets.map((meld) => normalizeTile(meld.tiles[0]));
     if (DRAGONS.every((dragon) => tripletTiles.includes(dragon))) return "대삼원";
     if (WINDS.every((wind) => tripletTiles.includes(wind))) return "대사희";
