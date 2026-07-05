@@ -1375,7 +1375,7 @@ test("share state parser allowlists fields and drops unknown melds", () => {
     roundWind: "north-east",
     seatWind: "west",
     honba: -3,
-    riichiSticks: 2.5,
+    riichiSticks: 4,
     situation: { riichi: "yes", none: false },
     melds: [
       { tiles: ["m1", "m1", "m1", "m1", "m1"], open: true },

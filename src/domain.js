@@ -687,10 +687,6 @@ function safeBoolean(value) {
   return value === true;
 }
 
-function safeNonNegativeInteger(value) {
-  return Number.isInteger(value) && value >= 0 ? Math.min(value, 99) : 0;
-}
-
 function safeHonba(value) {
   return Number.isInteger(value) && value >= 0 ? Math.min(value, MAX_HONBA) : 0;
 }
@@ -738,7 +734,7 @@ export function sanitizeStatePayload(payload) {
     roundWind: safeWind(raw.roundWind),
     seatWind: safeWind(raw.seatWind),
     honba: safeHonba(raw.honba),
-    riichiSticks: safeNonNegativeInteger(raw.riichiSticks),
+    riichiSticks: 0,
     situation: safeSituation(raw.situation),
     melds: safeMelds(raw.melds),
     winTile: safeTile(raw.winTile, ALL_TILES_37),
