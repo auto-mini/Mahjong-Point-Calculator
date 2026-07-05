@@ -163,7 +163,7 @@ export function createMeld(tiles, open = false) {
     tiles: [...tiles],
     normalizedTiles: tiles.map(normalizeTile),
     kind,
-    open: kind !== "pair" && Boolean(open),
+    open: kind !== "pair" && open === true,
   };
 }
 

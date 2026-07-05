@@ -75,6 +75,13 @@ test("pairs cannot be marked open by restored or shared state", () => {
   assert.equal(createMeld(["m1", "m1"], true).open, false);
 });
 
+test("non-boolean open values are ignored by restored state", () => {
+  const state = createStateFromMelds({
+    melds: [{ tiles: ["m1", "m2", "m3"], open: "false" }],
+  });
+  assert.equal(state.melds[0].open, false);
+});
+
 test("winning tile candidates keep red five separate from normal five", () => {
   const candidates = winningTileCandidates([
     { tiles: ["m3", "m4", "m5r"] },
