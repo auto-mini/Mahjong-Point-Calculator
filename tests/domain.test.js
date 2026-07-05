@@ -836,6 +836,184 @@ test("representative fu table scoring cases stay stable", () => {
   assert.equal(openTerminalQuadRon.score.total, 1600);
 });
 
+test("situation yaku and tsumo honba scoring stay stable", () => {
+  const haiteiPinfuTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { haitei: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(haiteiPinfuTsumo.ok, true, "haitei pinfu tsumo should calculate");
+  assert.equal(haiteiPinfuTsumo.han, 3);
+  assert.equal(haiteiPinfuTsumo.fu, 20);
+  assert.equal(haiteiPinfuTsumo.score.display, "700/1300");
+  assert.equal(haiteiPinfuTsumo.score.total, 2700);
+
+  const houteiPinfuRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { houtei: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(houteiPinfuRon.ok, true, "houtei pinfu ron should calculate");
+  assert.equal(houteiPinfuRon.han, 2);
+  assert.equal(houteiPinfuRon.fu, 30);
+  assert.equal(houteiPinfuRon.score.display, "2000점");
+  assert.equal(houteiPinfuRon.score.total, 2000);
+
+  const childPinfuTsumoTwoHonba = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    honba: 2,
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(childPinfuTsumoTwoHonba.ok, true, "child pinfu tsumo with honba should calculate");
+  assert.equal(childPinfuTsumoTwoHonba.han, 2);
+  assert.equal(childPinfuTsumoTwoHonba.fu, 20);
+  assert.equal(childPinfuTsumoTwoHonba.score.display, "600/900");
+  assert.equal(childPinfuTsumoTwoHonba.score.total, 2100);
+});
+
+test("score limit tiers stay stable", () => {
+  const limitCases = [
+    {
+      name: "haneman",
+      doraIndicators: ["m1"],
+      uraIndicators: ["s5"],
+      han: 6,
+      limitName: "하네만",
+      display: "12000점",
+      total: 12000,
+    },
+    {
+      name: "baiman",
+      doraIndicators: ["m1", "m2"],
+      uraIndicators: ["s5", "east"],
+      han: 8,
+      limitName: "배만",
+      display: "16000점",
+      total: 16000,
+    },
+    {
+      name: "sanbaiman",
+      doraIndicators: ["m1", "m2", "m3"],
+      uraIndicators: ["s5", "s6", "east"],
+      han: 11,
+      limitName: "삼배만",
+      display: "24000점",
+      total: 24000,
+    },
+    {
+      name: "kazoe yakuman",
+      doraIndicators: ["m1", "m2", "m3"],
+      uraIndicators: ["s5", "s6", "p5"],
+      han: 13,
+      limitName: "카조에역만",
+      display: "32000점",
+      total: 32000,
+    },
+  ];
+
+  for (const item of limitCases) {
+    const result = calc({
+      winMethod: "ron",
+      roundWind: "east",
+      seatWind: "south",
+      situation: { riichi: true, ippatsu: true, none: false },
+      melds: pinfuRonMelds,
+      winTile: "s8",
+      doraIndicators: item.doraIndicators,
+      uraIndicators: item.uraIndicators,
+    });
+    assert.equal(result.ok, true, item.name);
+    assert.equal(result.han, item.han, item.name);
+    assert.equal(result.fu, null, item.name);
+    assert.equal(result.score.limitName, item.limitName, item.name);
+    assert.equal(result.score.display, item.display, item.name);
+    assert.equal(result.score.total, item.total, item.name);
+  }
+
+  const kazoeChildTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["m1", "m2", "m3"],
+    uraIndicators: ["s5", "s6", "p5"],
+  });
+  assert.equal(kazoeChildTsumo.ok, true, "kazoe child tsumo should calculate");
+  assert.equal(kazoeChildTsumo.score.limitName, "카조에역만");
+  assert.equal(kazoeChildTsumo.score.display, "8000/16000");
+  assert.equal(kazoeChildTsumo.score.total, 32000);
+
+  const dealerHanemanRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "east",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["m1"],
+    uraIndicators: ["s5"],
+  });
+  assert.equal(dealerHanemanRon.ok, true, "dealer haneman ron should calculate");
+  assert.equal(dealerHanemanRon.han, 6);
+  assert.equal(dealerHanemanRon.score.limitName, "하네만");
+  assert.equal(dealerHanemanRon.score.display, "18000점");
+  assert.equal(dealerHanemanRon.score.total, 18000);
+
+  const dealerBaimanTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "east",
+    situation: { riichi: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["m1", "m2"],
+    uraIndicators: ["s5", "east"],
+  });
+  assert.equal(dealerBaimanTsumo.ok, true, "dealer baiman tsumo should calculate");
+  assert.equal(dealerBaimanTsumo.han, 8);
+  assert.equal(dealerBaimanTsumo.score.limitName, "배만");
+  assert.equal(dealerBaimanTsumo.score.display, "8000 all");
+  assert.equal(dealerBaimanTsumo.score.total, 24000);
+});
+
+test("3 han 60 fu remains below mangan", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["red", "red", "red"], open: true },
+      { tiles: ["p9", "p9", "p9", "p9"], open: true },
+      { tiles: ["m2", "m2", "m2", "m2"], open: true },
+      { tiles: ["s4", "s4", "s4"], open: true },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "m5",
+    doraIndicators: ["east", "south", "west"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.han, 3);
+  assert.equal(result.rawFu, 52);
+  assert.equal(result.fu, 60);
+  assert.equal(result.score.limitName, null);
+  assert.equal(result.score.display, "7700점");
+  assert.equal(result.score.total, 7700);
+});
+
 test("manual audit representative cases stay stable", () => {
   const pinfuRon = calc({
     winMethod: "ron",
