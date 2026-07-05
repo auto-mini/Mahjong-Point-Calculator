@@ -787,7 +787,7 @@ function pageFour() {
   return el("div", {}, [
     result.ok ? resultView(result) : errorResult(result.errors),
     footer([
-      { label: "공유", onClick: () => shareCurrentState(), instant: true },
+      { label: "공유", disabled: !result.ok, onClick: () => shareCurrentState(), instant: true },
       { label: "다시 계산", primary: true, onClick: () => resetAll() },
     ]),
   ]);
