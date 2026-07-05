@@ -143,7 +143,7 @@ function setState(next) {
 function stepForLoadedState(loadedState) {
   if (!loadedState.winMethod) return 1;
   if (calculate(loadedState).ok) return 4;
-  if (!isRestoredHandComplete(loadedState) || !loadedState.winTile) return 2;
+  if (!isRestoredHandComplete(loadedState) || !loadedState.winTile || handContextErrorsFor(loadedState).length) return 2;
   return 3;
 }
 
@@ -941,11 +941,15 @@ function visibleHandErrors() {
 }
 
 function handContextErrors() {
+  return handContextErrorsFor(state);
+}
+
+function handContextErrorsFor(targetState) {
   const messages = [];
-  if (isHandComplete() && state.situation.rinshan && !quads().length) {
+  if (isHandComplete(targetState.melds) && targetState.situation.rinshan && !quads(targetState.melds).length) {
     messages.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
   }
-  if (isHandComplete() && state.situation.chankan && !currentWinningTileCandidates().length) {
+  if (isHandComplete(targetState.melds) && targetState.situation.chankan && !currentWinningTileCandidates(targetState.melds, targetState.situation).length) {
     messages.push("창깡은 슌쯔를 완성하는 화료만 가능합니다.");
   }
   return messages;
@@ -966,6 +970,7 @@ function handStructureWarnings() {
 
 function doraValidationErrors() {
   const messages = [];
+  messages.push(...handContextErrors());
   if (shouldAskLastKanWinQuestion() && state.lastKanWin === null) messages.push("마지막 깡 직후 질문에 응답해주세요.");
   if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation.rinshan) messages.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
   if (state.situation.ippatsu && state.lastKanWin === true && !state.situation.chankan) messages.push("깡 직후 화료에서는 일발을 선택할 수 없습니다.");
@@ -1026,12 +1031,12 @@ function tileAssetSrc(tile) {
   return `${TILE_ASSET_ROOT}/${TILE_ASSET_FILES[tile]}`;
 }
 
-function quads() {
-  return state.melds.filter((meld) => meld.kind === "quad");
+function quads(melds = state.melds) {
+  return melds.filter((meld) => meld.kind === "quad");
 }
 
-function currentWinningTileCandidates(melds = state.melds) {
-  return winningTileCandidates(melds, { chankan: state.situation.chankan });
+function currentWinningTileCandidates(melds = state.melds, situation = state.situation) {
+  return winningTileCandidates(melds, { chankan: situation.chankan });
 }
 
 function needsLastKanClosedQuestion() {
