@@ -291,6 +291,54 @@ test("rinshan added kan dora depends on closed kan answer", () => {
   assert.equal(openKan.includes("도라 표시패를 2개 이상 입력해주세요."), false);
 });
 
+test("rinshan with mixed quads asks for last kan type before requiring the closed-kan dora", () => {
+  const mixedQuads = [
+    { tiles: ["m1", "m1", "m1", "m1"] },
+    { tiles: ["p2", "p2", "p2", "p2"], open: true },
+    { tiles: ["s3", "s4", "s5"] },
+    { tiles: ["m3", "m4", "m5"] },
+    { tiles: ["east", "east"] },
+  ];
+  const pending = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    melds: mixedQuads,
+    winTile: "s5",
+    doraIndicators: ["p9", "s9"],
+  }));
+  assert.equal(pending.includes("쯔모 직전 깡 종류를 선택해주세요."), true);
+  assert.equal(pending.includes("도라 표시패를 3개 이상 입력해주세요."), false);
+
+  const closedLastKan = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    melds: mixedQuads,
+    winTile: "s5",
+    lastKanWin: true,
+    lastKanClosed: true,
+    doraIndicators: ["p9", "s9"],
+  }));
+  assert.equal(closedLastKan.includes("도라 표시패를 3개 이상 입력해주세요."), true);
+
+  const openLastKan = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    melds: mixedQuads,
+    winTile: "s5",
+    lastKanWin: true,
+    lastKanClosed: false,
+    doraIndicators: ["p9", "s9"],
+  }));
+  assert.equal(openLastKan.includes("쯔모 직전 깡 종류를 선택해주세요."), false);
+  assert.equal(openLastKan.includes("도라 표시패를 3개 이상 입력해주세요."), false);
+});
+
 test("chankan does not add the robbed kan dora indicator", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",

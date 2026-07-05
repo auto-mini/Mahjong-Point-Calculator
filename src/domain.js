@@ -776,7 +776,8 @@ function resolvedLastKanClosed(state) {
 function requiredDoraIndicatorCount(state) {
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
   let recognizedKanDora = quads.length;
-  if (state.situation?.rinshan && resolvedLastKanClosed(state) === false) recognizedKanDora -= 1;
+  const lastKanClosed = resolvedLastKanClosed(state);
+  if (state.situation?.rinshan && lastKanClosed !== true) recognizedKanDora -= 1;
   if (!state.situation?.rinshan && !state.situation?.chankan && state.winMethod === "ron" && state.lastKanWin === true) recognizedKanDora += 1;
   return 1 + Math.max(0, recognizedKanDora);
 }
@@ -827,7 +828,7 @@ export function validateState(state) {
   const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
   if (state.situation?.rinshan && !quads.length) errors.push("영상개화는 손패에 깡쯔가 있어야 합니다.");
   if (state.situation?.rinshan && state.lastKanWin === false) errors.push("영상개화는 깡 직후 화료여야 합니다.");
-  if (state.situation?.rinshan && state.lastKanWin === true && resolvedLastKanClosed(state) === null && quads.length) errors.push("쯔모 직전 깡 종류를 선택해주세요.");
+  if (state.situation?.rinshan && resolvedLastKanClosed(state) === null && quads.length) errors.push("쯔모 직전 깡 종류를 선택해주세요.");
   if (!state.situation?.rinshan && !state.situation?.chankan && state.lastKanWin === null) errors.push("마지막 깡 직후 질문에 응답해주세요.");
   if (state.lastKanWin === true && state.winMethod === "tsumo" && !state.situation?.rinshan) errors.push("깡 직후 쯔모라면 영상개화를 선택해야 합니다.");
   const hasOpen = (state.melds || []).some((meld) => meld.open);

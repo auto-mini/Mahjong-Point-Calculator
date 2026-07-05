@@ -70,7 +70,9 @@ let selectedTile = null;
 let selectedCandidate = null;
 let picker = null;
 let modal = null;
+let modalReturnFocus = null;
 let latestResult = null;
+let renderVersion = 0;
 const TAP_ACTIVATION_DELAY_MS = 140;
 
 render();
@@ -95,6 +97,7 @@ function restoreStateFromHash() {
       selectedCandidate = null;
       picker = null;
       modal = null;
+      modalReturnFocus = null;
       lastSavedRecentKey = null;
       render();
     }
@@ -109,21 +112,13 @@ function restoreStateFromHash() {
     selectedCandidate = null;
     picker = null;
     modal = null;
+    modalReturnFocus = null;
     lastSavedRecentKey = null;
     render();
     return;
   }
   const next = normalizeUiState(decoded);
-  if (encodeShareState(next) === encodeShareState(state)) return;
-  initialShareError = null;
-  state = next;
-  step = stepForLoadedState(state);
-  selectedTile = null;
-  selectedCandidate = null;
-  picker = null;
-  modal = null;
-  lastSavedRecentKey = null;
-  render();
+  applyRestoredState(next);
 }
 
 function setState(next) {
@@ -208,6 +203,7 @@ function attachTapFeedback(node, onClick, instantClick = false) {
   node.addEventListener("touchcancel", release, { passive: true });
   node.addEventListener("click", (event) => {
     if (node.disabled) return;
+    const clickRenderVersion = renderVersion;
     release();
     snap();
     if (!onClick) return;
@@ -216,11 +212,15 @@ function attachTapFeedback(node, onClick, instantClick = false) {
       return;
     }
     event.preventDefault();
-    window.setTimeout(() => onClick(event), TAP_ACTIVATION_DELAY_MS);
+    window.setTimeout(() => {
+      if (!node.isConnected || clickRenderVersion !== renderVersion) return;
+      onClick(event);
+    }, TAP_ACTIVATION_DELAY_MS);
   });
 }
 
 function render() {
+  renderVersion += 1;
   latestResult = calculate(state);
   clearModalNodes();
   app.replaceChildren(nav(), page());
@@ -838,8 +838,7 @@ function isMeldFuLine(line) {
 }
 
 function openFuDetails(lines) {
-  modal = { type: "fu-details", lines };
-  render();
+  openModal({ type: "fu-details", lines }, () => document.querySelector(".result-line-button"));
 }
 
 function totalScoreDisplay(score) {
@@ -1028,6 +1027,7 @@ function resetAll() {
   selectedCandidate = null;
   picker = null;
   modal = null;
+  modalReturnFocus = null;
   initialShareError = null;
   lastSavedRecentKey = null;
   location.hash = "";
@@ -1081,7 +1081,8 @@ function resolvedLastKanClosed() {
 
 function requiredDoraIndicatorCount() {
   let recognizedKanDora = quads().length;
-  if (state.situation.rinshan && resolvedLastKanClosed() === false) recognizedKanDora -= 1;
+  const lastKanClosed = resolvedLastKanClosed();
+  if (state.situation.rinshan && lastKanClosed !== true) recognizedKanDora -= 1;
   if (!state.situation.rinshan && !state.situation.chankan && state.winMethod === "ron" && state.lastKanWin === true) recognizedKanDora += 1;
   return 1 + Math.max(0, recognizedKanDora);
 }
@@ -1156,16 +1157,15 @@ function recentKey(result) {
 }
 
 function openRecent() {
-  modal = "recent";
-  render();
+  openModal("recent", () => document.querySelector(".recent-button"));
 }
 
 function openAlternatives(alternatives) {
-  modal = { type: "alternatives", alternatives };
-  render();
+  openModal({ type: "alternatives", alternatives }, () => findButtonByText("동점 해석 보기"));
 }
 
 async function shareCurrentState() {
+  rememberModalReturnFocus(() => findButtonByText("공유"));
   const encoded = encodeShareState(state);
   const url = `${location.origin}${location.pathname}#s=${encoded}`;
   history.replaceState(null, "", `${location.pathname}#s=${encoded}`);
@@ -1180,12 +1180,44 @@ async function shareCurrentState() {
   render();
 }
 
+function openModal(nextModal, fallbackTarget = null) {
+  rememberModalReturnFocus(fallbackTarget);
+  modal = nextModal;
+  render();
+}
+
+function rememberModalReturnFocus(fallbackTarget = null) {
+  modalReturnFocus = {
+    element: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    fallbackTarget,
+  };
+}
+
+function restoreModalFocus() {
+  const returnFocus = modalReturnFocus;
+  modalReturnFocus = null;
+  if (!returnFocus) return;
+  requestAnimationFrame(() => {
+    const target = returnFocus.element?.isConnected
+      ? returnFocus.element
+      : typeof returnFocus.fallbackTarget === "function"
+        ? returnFocus.fallbackTarget()
+        : null;
+    target?.focus?.();
+  });
+}
+
+function findButtonByText(text) {
+  return [...document.querySelectorAll("button")].find((buttonNode) => buttonNode.textContent.trim() === text) || null;
+}
+
 function renderModal() {
   document.querySelectorAll(".modal-backdrop").forEach((node) => node.remove());
   if (!modal) return [];
   const close = () => {
     modal = null;
     render();
+    restoreModalFocus();
   };
   let body;
   if (modal === "recent") {
@@ -1306,12 +1338,19 @@ function restoreRecent(item) {
     render();
     return;
   }
+  applyRestoredState(normalizeUiState(safeItem.state), { stepOverride: 4, syncHash: true });
+}
+
+function applyRestoredState(nextState, { stepOverride = null, syncHash = false } = {}) {
   initialShareError = null;
-  state = normalizeUiState(safeItem.state);
-  step = 4;
-  modal = null;
+  state = nextState;
+  step = stepOverride ?? stepForLoadedState(state);
   selectedTile = null;
   selectedCandidate = null;
   picker = null;
+  modal = null;
+  modalReturnFocus = null;
+  lastSavedRecentKey = null;
+  if (syncHash) history.replaceState(null, "", `${location.pathname}#s=${encodeShareState(state)}`);
   render();
 }
