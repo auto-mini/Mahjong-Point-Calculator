@@ -124,6 +124,7 @@ function restoreStateFromHash() {
 
 function setState(next) {
   initialShareError = null;
+  const meldsChanged = Object.prototype.hasOwnProperty.call(next, "melds");
   state = normalizeUiState(createStateFromMelds({
     ...state,
     ...next,
@@ -132,6 +133,9 @@ function setState(next) {
       ...(next.situation || {}),
     },
   }));
+  if (meldsChanged && state.situation.rinshan && inferLastKanClosedFromMelds(state.melds) === null) {
+    state.lastKanClosed = null;
+  }
   if (closedOnlyInput()) selectedCandidate = null;
   render();
 }
