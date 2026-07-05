@@ -584,6 +584,7 @@ function calculateFu(shape, state, context = null) {
   }
   let fu = Math.ceil(rawFu / 10) * 10;
   if (!closed && state.winMethod === "ron" && rawFu === 20) {
+    rawFu += 10;
     fu = 30;
     lines.push({ name: "부가 부수 없음 최소", fu: 10 });
   }

@@ -787,6 +787,30 @@ test("open tanyao is accepted with kuitan", () => {
   assert.equal(result.yaku.some((item) => item.name === "탕야오"), true);
 });
 
+test("open ron with no added fu keeps minimum 30 fu breakdown consistent", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m3", "m4"], open: true },
+      { tiles: ["m3", "m4", "m5"], open: true },
+      { tiles: ["p2", "p3", "p4"], open: true },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["p6", "p6"] },
+    ],
+    winTile: "s2",
+    doraIndicators: ["m1"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.fu, 30);
+  assert.equal(result.rawFu, 30);
+  assert.deepEqual(result.fuLines, [
+    { name: "기본부", fu: 20 },
+    { name: "부가 부수 없음 최소", fu: 10 },
+  ]);
+});
+
 test("riichi hand can score ura dora", () => {
   const result = calc({
     winMethod: "ron",
