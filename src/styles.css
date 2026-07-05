@@ -295,10 +295,10 @@ h1 {
 }
 
 .honba-grid {
-  --honba-chip-size: clamp(24px, 7.2vw, 31px);
+  --honba-chip-size: clamp(25px, 7.8vw, 30px);
   grid-template-columns: repeat(9, var(--honba-chip-size));
   justify-content: center;
-  gap: clamp(3px, 1vw, 5px);
+  gap: clamp(2px, 0.7vw, 4px);
 }
 
 .honba-grid .chip {
@@ -554,7 +554,7 @@ h1 {
 }
 
 .tile-grid {
-  --tile-w: clamp(23px, 7.35vw, 28px);
+  --tile-w: clamp(24.5px, 7.85vw, 28px);
   --tile-h: calc(var(--tile-w) * 1.326);
   display: grid;
   gap: 7px;
