@@ -28,7 +28,7 @@
 통과한 명령:
 
 - `scripts/run.ps1 test`
-  - 58개 테스트 통과
+  - 61개 테스트 통과
 - `scripts/run.ps1 verify`
   - 정적 앱 파일과 module script 확인 통과
 - `scripts/run.ps1 build`
@@ -54,6 +54,7 @@
 - 쿠이탕
 - 리치/우라도라
 - 도라만 있고 일반역 없음
+- 일반 역 없음
 - 30부 4판 절상만관 없음
 - 5판 부수 무관
 - 13판 카조에역만
