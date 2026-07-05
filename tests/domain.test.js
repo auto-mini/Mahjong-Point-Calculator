@@ -1354,6 +1354,7 @@ test("share state parser allowlists fields and drops unknown melds", () => {
     riichiSticks: 2.5,
     situation: { riichi: "yes", none: false },
     melds: [
+      { tiles: ["m1", "m1", "m1", "m1", "m1"], open: true },
       { tiles: ["m1", "evil"], open: true },
       { tiles: ["m1", "m2", "m3"], open: true },
     ],

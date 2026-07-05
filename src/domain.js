@@ -717,8 +717,9 @@ function safeMelds(value) {
   if (!Array.isArray(value)) return [];
   return value.slice(0, 7).flatMap((raw) => {
     if (!raw || !Array.isArray(raw.tiles)) return [];
+    if (raw.tiles.length < 2 || raw.tiles.length > 4) return [];
     const tiles = raw.tiles.slice(0, 4);
-    if (tiles.length < 2 || tiles.some((tile) => !ALL_TILES_37.includes(tile))) return [];
+    if (tiles.some((tile) => !ALL_TILES_37.includes(tile))) return [];
     const meld = createMeld(tiles, raw.open);
     return meld.kind === "unknown" ? [] : [{ tiles: meld.tiles, open: meld.open }];
   });
