@@ -1263,6 +1263,26 @@ test("four quads are detected as yakuman and not scored", () => {
   assert.equal(result.errors[0].includes("사깡쯔"), true);
 });
 
+test("overlapping yakuman names are all reported", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["east", "east", "east"] },
+      { tiles: ["south", "south", "south"] },
+      { tiles: ["west", "west", "west"] },
+      { tiles: ["north", "north", "north"] },
+      { tiles: ["red", "red"] },
+    ],
+    winTile: "red",
+    doraIndicators: ["m1"],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].includes("대사희"), true);
+  assert.equal(result.errors[0].includes("자일색"), true);
+});
+
 test("share state round-trips through URL-safe payload", () => {
   const state = createStateFromMelds({
     winMethod: "ron",

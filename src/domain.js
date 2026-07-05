@@ -421,22 +421,23 @@ function hasSameSequenceSet(shape, requiredCopies) {
 
 function detectYakuman(shape, state, context = null) {
   const tiles = handTilesFromShape(shape);
-  if (tiles.every(isHonor)) return "자일색";
-  if (tiles.every(isGreen)) return "녹일색";
-  if (tiles.every(isTerminal)) return "청노두";
-  if (isChurenPoutou(shape)) return "구련보등";
+  const names = [];
   if (shape.type === "standard") {
     const triplets = shape.melds.filter((meld) => ["triplet", "quad"].includes(meld.kind));
-    if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) return "사깡쯔";
+    if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) names.push("사깡쯔");
     const tripletTiles = triplets.map((meld) => normalizeTile(meld.tiles[0]));
-    if (DRAGONS.every((dragon) => tripletTiles.includes(dragon))) return "대삼원";
-    if (WINDS.every((wind) => tripletTiles.includes(wind))) return "대사희";
+    if (DRAGONS.every((dragon) => tripletTiles.includes(dragon))) names.push("대삼원");
+    if (WINDS.every((wind) => tripletTiles.includes(wind))) names.push("대사희");
     if (tripletTiles.filter((tile) => WINDS.includes(tile)).length === 3 && WINDS.includes(normalizeTile(shape.pair.tiles[0]))) {
-      return "소사희";
+      names.push("소사희");
     }
-    if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state, context))) return "사암각";
+    if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state, context))) names.push("사암각");
   }
-  return null;
+  if (tiles.every(isHonor)) names.push("자일색");
+  if (tiles.every(isGreen)) names.push("녹일색");
+  if (tiles.every(isTerminal)) names.push("청노두");
+  if (isChurenPoutou(shape)) names.push("구련보등");
+  return names.length ? names.join(", ") : null;
 }
 
 function detectYaku(shape, state, context = null) {
