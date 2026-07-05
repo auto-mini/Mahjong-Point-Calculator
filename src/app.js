@@ -222,6 +222,7 @@ function attachTapFeedback(node, onClick, instantClick = false) {
 
 function render() {
   latestResult = calculate(state);
+  clearModalNodes();
   app.replaceChildren(nav(), page());
   const modalNodes = renderModal();
   app.inert = modalNodes.length > 0;
@@ -229,6 +230,12 @@ function render() {
   else app.removeAttribute("aria-hidden");
   document.body.append(...modalNodes);
   focusModal();
+}
+
+function clearModalNodes() {
+  for (const node of document.querySelectorAll(".modal-backdrop")) {
+    node.remove();
+  }
 }
 
 function nav() {
