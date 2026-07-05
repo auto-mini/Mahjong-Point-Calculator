@@ -13,6 +13,7 @@
   normalizeTile,
   sanitizeRecentItems,
   tileLabel,
+  validateTiles,
   validateVisibleTiles,
   winningTileCandidates,
 } from "./domain.js";
@@ -144,7 +145,12 @@ function setState(next) {
 function stepForLoadedState(loadedState) {
   if (!loadedState.winMethod) return 1;
   if (calculate(loadedState).ok) return 4;
-  if (!isRestoredHandComplete(loadedState) || !loadedState.winTile || handContextErrorsFor(loadedState).length) return 2;
+  if (
+    !isRestoredHandComplete(loadedState) ||
+    !loadedState.winTile ||
+    validateTiles(flattenMelds(loadedState.melds)).length ||
+    handContextErrorsFor(loadedState).length
+  ) return 2;
   return 3;
 }
 
@@ -948,7 +954,7 @@ function isHandComplete(melds = state.melds) {
 }
 
 function canStepTwoContinue() {
-  return isHandComplete() && Boolean(state.winTile) && handContextErrors().length === 0;
+  return isHandComplete() && Boolean(state.winTile) && visibleHandErrors().length === 0;
 }
 
 function canStepThreeContinue() {
@@ -957,6 +963,7 @@ function canStepThreeContinue() {
 
 function handErrors() {
   const messages = handStructureWarnings();
+  messages.push(...validateTiles(flattenMelds(state.melds)));
   if (!state.melds.length) messages.push("손패 미완성: 세트를 입력해주세요.");
   else if (!isHandComplete()) messages.push("손패 미완성 또는 화료 형태 불가: 4몸통+1머리 또는 치또이 형태가 필요합니다.");
   messages.push(...handContextErrors());
