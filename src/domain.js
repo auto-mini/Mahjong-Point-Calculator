@@ -434,7 +434,6 @@ function detectYakuman(shape, state, context = null) {
     if (tripletTiles.filter((tile) => WINDS.includes(tile)).length === 3 && WINDS.includes(normalizeTile(shape.pair.tiles[0]))) {
       return "소사희";
     }
-    if (shape.melds.filter((meld) => meld.kind === "quad").length === 4) return "사깡쯔";
     if (triplets.length === 4 && triplets.every((meld) => isConcealedTripletForYaku(meld, state, context))) return "사암각";
   }
   return null;
