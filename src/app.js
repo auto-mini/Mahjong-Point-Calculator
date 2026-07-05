@@ -88,7 +88,14 @@ window.addEventListener("keydown", handleGlobalKeydown);
 
 function handleGlobalKeydown(event) {
   if (event.key !== "Escape" && event.key !== "Esc") return;
-  if (modal || !picker) return;
+  if (modal) {
+    event.preventDefault();
+    modal = null;
+    render();
+    restoreModalFocus();
+    return;
+  }
+  if (!picker) return;
   event.preventDefault();
   closeIndicatorPicker(picker);
 }
@@ -292,7 +299,9 @@ function clearModalNodes() {
 function nav() {
   const titles = ["화료/국 정보", "손패 입력", "도라/우라", "결과"];
   const topbar = el("section", { className: "topbar" });
-  topbar.append(step > 1 ? el("button", { className: "back-button", text: "<", ariaLabel: "이전 페이지로", onClick: () => goBack() }) : el("span", { className: "back-spacer" }));
+  topbar.append(step > 1
+    ? el("button", { className: "back-button", text: "<", ariaLabel: "이전 페이지로", onClick: () => goBack() })
+    : el("button", { className: "notice-button", text: "!", ariaLabel: "주의사항", title: "주의사항", onClick: () => openNotice() }));
   const title = el("div", { className: "page-title" }, [
     el("div", { className: "page-kicker", text: `${step}/4` }),
     el("h1", { text: titles[step - 1] }),
@@ -1349,6 +1358,10 @@ function openRecent() {
   openModal("recent", () => document.querySelector(".recent-button"));
 }
 
+function openNotice() {
+  openModal({ type: "notice" }, () => document.querySelector(".notice-button"));
+}
+
 function openAlternatives(alternatives) {
   openModal({ type: "alternatives", alternatives }, () => findButtonByText("동점 해석 보기"));
 }
@@ -1448,6 +1461,19 @@ function renderModal() {
         : el("p", { className: "panel-note", text: "저장된 최근계산이 없습니다." }),
       recent.length ? el("button", { className: "secondary-action recent-clear", text: "전체 삭제", onClick: () => { clearRecent(); render(); } }) : null,
     ];
+  } else if (modal?.type === "notice") {
+    body = [
+      el("div", { className: "sheet-header" }, [
+        el("h2", { text: "주의사항" }),
+        el("button", { className: "icon-button", text: "닫기", onClick: close }),
+      ]),
+      el("div", { className: "notice-list" }, [
+        el("p", { text: "계산 결과는 보조 도구입니다. 이상한 결과가 있으면 손패, 화료패, 도라 표시패를 다시 확인해주세요." }),
+        el("p", { text: "작혼 4인 일반게임 룰 기준입니다. 룰 변경이나 특수 룰에는 맞지 않을 수 있습니다." }),
+        el("p", { text: "도라/우라도라 표시패는 실제로 뒤집힌 것만 순서대로 입력해주세요." }),
+        el("p", { text: "역만 손패는 계산 대상이 아닙니다." }),
+      ]),
+    ];
   } else if (modal?.type === "alternatives") {
     body = [
       el("div", { className: "sheet-header" }, [
@@ -1494,6 +1520,7 @@ function renderModal() {
 
 function modalLabel() {
   if (modal === "recent") return "최근계산";
+  if (modal?.type === "notice") return "주의사항";
   if (modal?.type === "alternatives") return "동점 해석";
   if (modal?.type === "restore-error") return "복원 실패";
   return "공유 링크";
