@@ -81,4 +81,4 @@ powershell -ExecutionPolicy Bypass -File scripts/run.ps1 build
 
 ## 배포
 
-`main` 브랜치에 push하면 GitHub Actions가 테스트와 빌드를 실행하고, `gh-pages` 브랜치에 정적 결과물을 배포합니다.
+`main` 브랜치에 push하면 GitHub Actions가 테스트와 빌드를 실행하고, GitHub Pages artifact로 정적 결과물을 배포합니다.
