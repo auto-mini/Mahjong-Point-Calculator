@@ -696,6 +696,146 @@ test("score calculation clamps honba to the supported UI range", () => {
   assert.equal(result.score.total, 3400);
 });
 
+test("representative fu table scoring cases stay stable", () => {
+  const dealerPinfuRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "east",
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(dealerPinfuRon.ok, true, "dealer pinfu ron should calculate");
+  assert.equal(dealerPinfuRon.han, 1);
+  assert.equal(dealerPinfuRon.fu, 30);
+  assert.equal(dealerPinfuRon.score.total, 1500);
+
+  const openTanyaoTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m3", "m4"], open: true },
+      { tiles: ["m6", "m7", "m8"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s3", "s4", "s5"] },
+      { tiles: ["p6", "p6"] },
+    ],
+    winTile: "p4",
+    doraIndicators: ["east"],
+  });
+  assert.equal(openTanyaoTsumo.ok, true, "open tanyao tsumo should calculate");
+  assert.equal(openTanyaoTsumo.han, 1);
+  assert.equal(openTanyaoTsumo.rawFu, 22);
+  assert.equal(openTanyaoTsumo.fu, 30);
+  assert.equal(openTanyaoTsumo.score.display, "300/500");
+  assert.equal(openTanyaoTsumo.score.total, 1100);
+
+  const doubleSouthPairRon = calc({
+    winMethod: "ron",
+    roundWind: "south",
+    seatWind: "south",
+    situation: { riichi: true, none: false },
+    melds: [
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["south", "south"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["p9"],
+    uraIndicators: ["m9"],
+  });
+  assert.equal(doubleSouthPairRon.ok, true, "double wind pair ron should calculate");
+  assert.equal(doubleSouthPairRon.han, 1);
+  assert.equal(doubleSouthPairRon.rawFu, 34);
+  assert.equal(doubleSouthPairRon.fu, 40);
+  assert.equal(doubleSouthPairRon.score.total, 1300);
+
+  const openDragonTripletRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["red", "red", "red"], open: true },
+      { tiles: ["m2", "m3", "m4"], open: true },
+      { tiles: ["p2", "p3", "p4"], open: true },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(openDragonTripletRon.ok, true, "open dragon triplet ron should calculate");
+  assert.equal(openDragonTripletRon.han, 1);
+  assert.equal(openDragonTripletRon.rawFu, 24);
+  assert.equal(openDragonTripletRon.fu, 30);
+  assert.equal(openDragonTripletRon.score.total, 1000);
+
+  const closedDragonTripletTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["red", "red", "red"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(closedDragonTripletTsumo.ok, true, "closed dragon triplet tsumo should calculate");
+  assert.equal(closedDragonTripletTsumo.han, 2);
+  assert.equal(closedDragonTripletTsumo.rawFu, 30);
+  assert.equal(closedDragonTripletTsumo.fu, 30);
+  assert.equal(closedDragonTripletTsumo.score.display, "500/1000");
+  assert.equal(closedDragonTripletTsumo.score.total, 2000);
+
+  const closedSimpleQuadTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2", "m2"] },
+      { tiles: ["m3", "m4", "m5"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["red", "red"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["east", "south"],
+  });
+  assert.equal(closedSimpleQuadTsumo.ok, true, "closed simple quad tsumo should calculate");
+  assert.equal(closedSimpleQuadTsumo.han, 1);
+  assert.equal(closedSimpleQuadTsumo.rawFu, 40);
+  assert.equal(closedSimpleQuadTsumo.fu, 40);
+  assert.equal(closedSimpleQuadTsumo.score.display, "400/700");
+  assert.equal(closedSimpleQuadTsumo.score.total, 1500);
+
+  const openTerminalQuadRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["green", "green", "green"], open: true },
+      { tiles: ["p9", "p9", "p9", "p9"], open: true },
+      { tiles: ["m2", "m3", "m4"], open: true },
+      { tiles: ["s6", "s7", "s8"], open: true },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "m5",
+    doraIndicators: ["east", "south"],
+  });
+  assert.equal(openTerminalQuadRon.ok, true, "open terminal quad ron should calculate");
+  assert.equal(openTerminalQuadRon.han, 1);
+  assert.equal(openTerminalQuadRon.rawFu, 42);
+  assert.equal(openTerminalQuadRon.fu, 50);
+  assert.equal(openTerminalQuadRon.score.total, 1600);
+});
+
 test("manual audit representative cases stay stable", () => {
   const pinfuRon = calc({
     winMethod: "ron",
