@@ -896,7 +896,10 @@ function footer(actions) {
 }
 
 function goBack() {
-  step = Math.max(1, step - 1);
+  const nextStep = Math.max(1, step - 1);
+  if (nextStep === step) return;
+  clearStepTransientState();
+  step = nextStep;
   render();
 }
 
@@ -904,10 +907,18 @@ function goNext() {
   if (step === 1 && !canStepOneContinue()) return;
   if (step === 2 && !canStepTwoContinue()) return;
   if (step === 3 && !canStepThreeContinue()) return;
-  if (step === 2) selectedTile = null;
   if (step === 3 && latestResult?.ok) saveRecent(latestResult, false);
-  step = Math.min(4, step + 1);
+  const nextStep = Math.min(4, step + 1);
+  if (nextStep === step) return;
+  clearStepTransientState();
+  step = nextStep;
   render();
+}
+
+function clearStepTransientState() {
+  selectedTile = null;
+  selectedCandidate = null;
+  picker = null;
 }
 
 function maxReachableStep() {
