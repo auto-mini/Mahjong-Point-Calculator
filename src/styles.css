@@ -697,6 +697,12 @@ h1 {
   transform: translateX(-0.5px);
 }
 
+.slot.tap-press .tile,
+.slot.tap-snap .tile,
+.slot:active .tile {
+  transform: translateX(-0.5px) rotate(-2deg) translateY(-2px) scale(1.045);
+}
+
 .kan-extra,
 .kan-note {
   margin-top: 12px;
