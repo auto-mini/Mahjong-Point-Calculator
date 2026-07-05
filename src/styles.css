@@ -887,6 +887,7 @@ h1 {
   white-space: pre-line;
   word-break: keep-all;
   overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .slot.active {
@@ -1067,6 +1068,7 @@ h1 {
   line-height: 1.5;
   word-break: keep-all;
   overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .recent-clear {
