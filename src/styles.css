@@ -360,6 +360,7 @@ h1 {
 }
 
 .large-touch .back-button,
+.large-touch .notice-button,
 .large-touch .back-spacer {
   width: 42px;
   min-height: 42px;
