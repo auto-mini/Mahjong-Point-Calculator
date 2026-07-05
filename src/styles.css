@@ -714,14 +714,21 @@ h1 {
 
 .candidate-group {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px;
   align-items: start;
+}
+
+.candidate-group > .label {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .candidate-options {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
@@ -783,9 +790,14 @@ h1 {
 }
 
 .candidate-box {
-  --tile-w: 27px;
+  --tile-w: 26px;
   --tile-h: calc(var(--tile-w) * 1.326);
-  padding: 4px;
+  padding: 3px;
+}
+
+.candidate-box .tile-row {
+  gap: 1px;
+  flex-wrap: nowrap;
 }
 
 .slot-row {
