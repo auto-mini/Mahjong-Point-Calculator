@@ -525,6 +525,25 @@ test("ron winning tile in a sequence does not open unrelated closed triplets", (
   assert.equal(result.yaku.some((item) => item.name === "삼암각"), true);
 });
 
+test("equivalent automatic alternatives are hidden", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m2", "m2"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p3", "p3", "p3"] },
+      { tiles: ["s4", "s4", "s4"] },
+      { tiles: ["p5", "p5"] },
+    ],
+    winTile: "m2",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.alternatives.length, 0);
+});
+
 test("pinfu tsumo is 20 fu and includes menzen tsumo", () => {
   const result = calc({
     winMethod: "tsumo",

@@ -895,10 +895,30 @@ export function calculate(state) {
   }
   if (!results.length) return { ok: false, errors: [bonusDora || bonusUra ? "도라만 있고 일반 역이 없습니다." : "일반 역이 없습니다."] };
   results.sort(compareResults);
+  const best = results[0];
+  const seenAlternativeKeys = new Set([visibleResultKey(best)]);
   return {
-    ...results[0],
-    alternatives: results.slice(1).filter((item) => item.score.total === results[0].score.total && item.han === results[0].han),
+    ...best,
+    alternatives: results.slice(1)
+      .filter((item) => item.score.total === best.score.total && item.han === best.han)
+      .filter((item) => {
+        const key = visibleResultKey(item);
+        if (seenAlternativeKeys.has(key)) return false;
+        seenAlternativeKeys.add(key);
+        return true;
+      }),
   };
+}
+
+function visibleResultKey(result) {
+  return [
+    result.score.total,
+    result.score.display,
+    result.score.limitName || "",
+    result.han,
+    result.fu ?? "x",
+    result.yaku.map((item) => `${item.name}:${item.han}`).join(","),
+  ].join("|");
 }
 
 export function createStateFromMelds(partial) {
