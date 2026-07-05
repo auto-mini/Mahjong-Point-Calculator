@@ -564,7 +564,13 @@ function candidatePanel() {
   const groups = groupCandidates(candidates);
   const activeCandidate = selectedCandidate;
   return panel("후보군", [
-    activeCandidate
+    !candidates.length
+      ? el("div", {
+          className: "alert",
+          text: "이 패로 추가할 수 있는 후보가 없습니다. 같은 패 4장 제한을 확인해주세요.",
+          attrs: { role: "alert" },
+        })
+      : activeCandidate
       ? el("div", { className: "selected-candidate" }, [
           candidateBox(activeCandidate),
           el("div", { className: "candidate-controls" }, [
@@ -575,7 +581,7 @@ function candidatePanel() {
             ]),
           ]),
         ])
-        : el(
+      : el(
           "div",
           { className: "candidate-section" },
           CANDIDATE_KIND_ORDER.filter((kind) => groups[kind]?.length).map((kind) =>
