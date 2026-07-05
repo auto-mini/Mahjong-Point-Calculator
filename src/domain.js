@@ -852,6 +852,9 @@ export function calculate(state) {
   if (validationErrors.length) return { ok: false, errors: validationErrors };
   const shapes = decomposeHand(state.melds || []);
   if (!shapes.length) return { ok: false, errors: ["화료 형태를 만들 수 없습니다."] };
+  const handTiles = flattenMelds(state.melds || []);
+  const bonusDora = countDora(handTiles, state.doraIndicators || []);
+  const bonusUra = state.situation?.riichi || state.situation?.doubleRiichi ? countDora(handTiles, state.uraIndicators || [], { includeRed: false }) : 0;
 
   const results = [];
   for (const shape of shapes) {
@@ -859,16 +862,13 @@ export function calculate(state) {
       const yakuman = detectYakuman(shape, state, context);
       if (yakuman) return { ok: false, errors: [`역만 손패입니다. 부수 계산 대상이 아닙니다. (${yakuman})`] };
       const baseYaku = detectYaku(shape, state, context);
-      const handTiles = flattenMelds(state.melds || []);
-      const dora = countDora(handTiles, state.doraIndicators || []);
-      const ura = state.situation?.riichi || state.situation?.doubleRiichi ? countDora(handTiles, state.uraIndicators || [], { includeRed: false }) : 0;
       if (!baseYaku.length) {
-        if (dora || ura) continue;
+        if (bonusDora || bonusUra) continue;
         continue;
       }
       const yaku = [...baseYaku];
-      if (dora) yaku.push({ name: "도라", han: dora });
-      if (ura) yaku.push({ name: "우라도라", han: ura });
+      if (bonusDora) yaku.push({ name: "도라", han: bonusDora });
+      if (bonusUra) yaku.push({ name: "우라도라", han: bonusUra });
       const han = yaku.reduce((sum, item) => sum + item.han, 0);
       const fuInfo = calculateFu(shape, state, context);
       const score = calculateScore({
@@ -893,7 +893,7 @@ export function calculate(state) {
       });
     }
   }
-  if (!results.length) return { ok: false, errors: ["도라만 있고 일반 역이 없습니다."] };
+  if (!results.length) return { ok: false, errors: [bonusDora || bonusUra ? "도라만 있고 일반 역이 없습니다." : "일반 역이 없습니다."] };
   results.sort(compareResults);
   return {
     ...results[0],

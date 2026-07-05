@@ -824,6 +824,25 @@ test("open all sequences with no yaku and only dora is rejected", () => {
   assert.deepEqual(result.errors, ["도라만 있고 일반 역이 없습니다."]);
 });
 
+test("open hand with no yaku and no dora reports missing yaku", () => {
+  const result = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"], open: true },
+      { tiles: ["p1", "p2", "p3"], open: true },
+      { tiles: ["s4", "s5", "s6"], open: true },
+      { tiles: ["m7", "m8", "m9"], open: true },
+      { tiles: ["p8", "p8"] },
+    ],
+    winTile: "p8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.errors, ["일반 역이 없습니다."]);
+});
+
 test("30 fu 4 han is not rounded up to mangan", () => {
   const result = calc({
     winMethod: "ron",
