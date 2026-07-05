@@ -1058,14 +1058,6 @@ function shouldAskLastKanClosedQuestion() {
   return state.lastKanWin === true && state.situation.rinshan && quads().length > 0 && inferLastKanClosedFromMelds() === null;
 }
 
-function isLastKanDoraRecognized() {
-  if (state.situation.chankan) return false;
-  if (state.situation.rinshan) return resolvedLastKanClosed() === true && quads().length > 0;
-  if (state.lastKanWin !== true) return false;
-  if (state.winMethod === "ron") return true;
-  return false;
-}
-
 function inferLastKanClosedFromMelds(melds = state.melds) {
   const handQuads = (melds || []).filter((meld) => meld.kind === "quad");
   if (!handQuads.length) return null;

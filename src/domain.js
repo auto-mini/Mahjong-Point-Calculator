@@ -751,15 +751,6 @@ function pushUniqueErrors(errors, additions) {
   }
 }
 
-function isRecognizedLastKanDora(state) {
-  if (state.situation?.chankan) return false;
-  const quads = (state.melds || []).filter((meld) => meld.kind === "quad");
-  if (state.situation?.rinshan) return resolvedLastKanClosed(state) === true && quads.length > 0;
-  if (state.lastKanWin !== true) return false;
-  if (state.winMethod === "ron") return true;
-  return false;
-}
-
 function inferLastKanClosedFromMelds(melds = []) {
   const quads = (melds || []).filter((meld) => meld.kind === "quad");
   if (!quads.length) return null;
