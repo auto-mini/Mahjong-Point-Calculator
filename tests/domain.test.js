@@ -298,6 +298,34 @@ test("chankan does not add the robbed kan dora indicator", () => {
   assert.equal(errors.includes("해당 깡으로 인한 도라가 인정됩니다. 도라 표시패를 2개 이상 입력해주세요."), false);
 });
 
+test("chankan can keep ippatsu but not double riichi in non-yakuman scope", () => {
+  const ippatsuChankan = calculate(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, chankan: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  }));
+  assert.equal(ippatsuChankan.ok, true);
+  assert.equal(ippatsuChankan.yaku.some((item) => item.name === "일발"), true);
+  assert.equal(ippatsuChankan.yaku.some((item) => item.name === "창깡"), true);
+
+  const doubleRiichiChankan = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { doubleRiichi: true, chankan: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  }));
+  assert.equal(doubleRiichiChankan.includes("창깡과 더블리치는 동시에 선택할 수 없습니다."), true);
+});
+
 test("inactive ura indicators are ignored by tile quantity validation", () => {
   const errors = validateState(createStateFromMelds({
     winMethod: "ron",

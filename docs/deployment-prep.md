@@ -41,6 +41,8 @@ Windows 방화벽이 Node.js 접근을 물으면 개인 네트워크에서 허�
 생성된 `dist/`를 `gh-pages` 브랜치로 배포한다. GitHub Pages는 `dist/_headers`를
 적용하지 않으므로 공개 사이트의 CSP/Referrer 정책은 `index.html`의 meta 태그가
 담당한다.
+빌드 결과가 기존 `gh-pages` 내용과 같으면 브랜치 푸시는 건너뛰어 불필요한 Pages
+재배포를 만들지 않는다.
 
 수동 배포가 필요하면 GitHub Actions의 `Deploy static site` 워크플로를 직접 실행한다.
 

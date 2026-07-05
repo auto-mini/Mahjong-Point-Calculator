@@ -28,7 +28,7 @@
 통과한 명령:
 
 - `scripts/run.ps1 test`
-  - 57개 테스트 통과
+  - 58개 테스트 통과
 - `scripts/run.ps1 verify`
   - 정적 앱 파일과 module script 확인 통과
 - `scripts/run.ps1 build`
