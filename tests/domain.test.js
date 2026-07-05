@@ -680,6 +680,183 @@ test("score calculation clamps honba to the supported UI range", () => {
   assert.equal(result.score.total, 3400);
 });
 
+test("manual audit representative cases stay stable", () => {
+  const pinfuRon = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(pinfuRon.ok, true, "pinfu ron should calculate");
+  assert.equal(pinfuRon.han, 1);
+  assert.equal(pinfuRon.fu, 30);
+  assert.equal(pinfuRon.score.total, 1000);
+
+  const pinfuTsumo = calc({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  });
+  assert.equal(pinfuTsumo.ok, true, "pinfu tsumo should calculate");
+  assert.equal(pinfuTsumo.han, 2);
+  assert.equal(pinfuTsumo.fu, 20);
+  assert.equal(pinfuTsumo.score.display, "400/700");
+  assert.equal(pinfuTsumo.score.total, 1500);
+
+  const chiitoi = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m1"] },
+      { tiles: ["m2", "m2"] },
+      { tiles: ["p3", "p3"] },
+      { tiles: ["p4", "p4"] },
+      { tiles: ["s5", "s5"] },
+      { tiles: ["s6", "s6"] },
+      { tiles: ["red", "red"] },
+    ],
+    winTile: "red",
+    doraIndicators: ["east"],
+  });
+  assert.equal(chiitoi.ok, true, "chiitoi should calculate");
+  assert.deepEqual(chiitoi.yaku.map((item) => item.name), ["치또이"]);
+  assert.equal(chiitoi.han, 2);
+  assert.equal(chiitoi.fu, 25);
+
+  const doubleEast = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "east",
+    melds: [
+      { tiles: ["east", "east", "east"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["red", "red"] },
+    ],
+    winTile: "red",
+    doraIndicators: ["east"],
+  });
+  assert.equal(doubleEast.ok, true, "double east should calculate");
+  assert.equal(doubleEast.yaku.some((item) => item.name === "더블동" && item.han === 2), true);
+
+  const openTanyao = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m2", "m3", "m4"], open: true },
+      { tiles: ["m6", "m7", "m8"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s3", "s4", "s5"] },
+      { tiles: ["p6", "p6"] },
+    ],
+    winTile: "p6",
+    doraIndicators: ["east"],
+  });
+  assert.equal(openTanyao.ok, true, "open tanyao should calculate");
+  assert.equal(openTanyao.yaku.some((item) => item.name === "탕야오"), true);
+
+  const doraOnly = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    melds: [
+      { tiles: ["m1", "m2", "m3"], open: true },
+      { tiles: ["p4", "p5", "p6"], open: true },
+      { tiles: ["s7", "s8", "s9"], open: true },
+      { tiles: ["m4", "m5", "m6"], open: true },
+      { tiles: ["white", "white"] },
+    ],
+    winTile: "white",
+    doraIndicators: ["m3"],
+  });
+  assert.equal(doraOnly.ok, false, "dora-only hand should be rejected");
+  assert.deepEqual(doraOnly.errors, ["도라만 있고 일반 역이 없습니다."]);
+
+  const fourHanThirtyFu = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["s7"],
+    uraIndicators: ["p9"],
+  });
+  assert.equal(fourHanThirtyFu.ok, true, "4 han 30 fu should calculate");
+  assert.equal(fourHanThirtyFu.han, 4);
+  assert.equal(fourHanThirtyFu.fu, 30);
+  assert.equal(fourHanThirtyFu.score.limitName, null);
+
+  const fourHanFortyFu = calc({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, ippatsu: true, none: false },
+    melds: [
+      { tiles: ["white", "white", "white"] },
+      { tiles: ["m2", "m3", "m4"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s6", "s7", "s8"] },
+      { tiles: ["m5", "m5"] },
+    ],
+    winTile: "s8",
+    doraIndicators: ["m1"],
+    uraIndicators: ["east"],
+  });
+  assert.equal(fourHanFortyFu.ok, true, "4 han 40 fu should calculate");
+  assert.equal(fourHanFortyFu.score.limitName, "만관");
+
+  const invalidChankan = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    melds: [
+      { tiles: ["m1", "m1", "m1"] },
+      { tiles: ["p2", "p2", "p2"] },
+      { tiles: ["s3", "s3", "s3"] },
+      { tiles: ["m4", "m5", "m6"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "s3",
+    doraIndicators: ["p9"],
+  }));
+  assert.equal(invalidChankan.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), true);
+
+  const invalidRinshan = validateState(createStateFromMelds({
+    winMethod: "tsumo",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { rinshan: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    doraIndicators: ["east"],
+  }));
+  assert.equal(invalidRinshan.includes("영상개화는 손패에 깡쯔가 있어야 합니다."), true);
+
+  const shareSource = createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { riichi: true, none: false },
+    melds: pinfuRonMelds,
+    winTile: "s8",
+    lastKanWin: false,
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  });
+  const shareRestored = decodeShareState(encodeShareState(shareSource));
+  assert.equal(calculate(shareRestored).score.total, calculate(shareSource).score.total);
+});
+
 test("ron shanpon does not count the completed triplet toward sanankou", () => {
   const result = calc({
     winMethod: "ron",
