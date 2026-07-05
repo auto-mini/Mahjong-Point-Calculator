@@ -1185,20 +1185,23 @@ function openAlternatives(alternatives) {
   openModal({ type: "alternatives", alternatives }, () => findButtonByText("동점 해석 보기"));
 }
 
-async function shareCurrentState() {
+function shareCurrentState() {
   rememberModalReturnFocus(() => findButtonByText("공유"));
   const encoded = encodeShareState(state);
   const url = `${location.origin}${location.pathname}#s=${encoded}`;
   history.replaceState(null, "", `${location.pathname}#s=${encoded}`);
-  let copied = false;
-  try {
-    await navigator.clipboard?.writeText(url);
-    copied = true;
-  } catch {
-    // Clipboard is optional; the visible URL box remains the fallback.
-  }
-  modal = { type: "share", url, copied };
+  modal = { type: "share", url, copied: false };
   render();
+  window.setTimeout(() => {
+    navigator.clipboard?.writeText(url).then(() => {
+      if (modal?.type === "share" && modal.url === url && !modal.copied) {
+        modal = { type: "share", url, copied: true };
+        render();
+      }
+    }).catch(() => {
+      // Clipboard is optional; the visible URL box remains the fallback.
+    });
+  }, 0);
 }
 
 function openModal(nextModal, fallbackTarget = null) {
