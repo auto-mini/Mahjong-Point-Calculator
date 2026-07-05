@@ -752,6 +752,11 @@ function pushUniqueErrors(errors, additions) {
   }
 }
 
+function sameNormalizedTileCount(tiles, targetTile) {
+  const target = normalizeTile(targetTile);
+  return tiles.filter((tile) => normalizeTile(tile) === target).length;
+}
+
 function inferLastKanClosedFromMelds(melds = []) {
   const quads = (melds || []).filter((meld) => meld.kind === "quad");
   if (!quads.length) return null;
@@ -792,6 +797,16 @@ export function validateState(state) {
     ...(state.doraIndicators || []).filter(Boolean),
     ...(needsUra ? (state.uraIndicators || []).filter(Boolean) : []),
   ]));
+  if (state.situation?.chankan && state.winTile) {
+    const chankanVisibleTiles = [
+      ...tiles,
+      ...(state.doraIndicators || []).filter(Boolean),
+      ...(needsUra ? (state.uraIndicators || []).filter(Boolean) : []),
+    ];
+    if (sameNormalizedTileCount(chankanVisibleTiles, state.winTile) > 1) {
+      errors.push("창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다.");
+    }
+  }
   if (!state.doraIndicators?.filter(Boolean).length) errors.push("도라 첫 칸을 입력해주세요.");
   const doraCount = leadingFilledCount(state.doraIndicators || []);
   const requiredDoraCount = requiredDoraIndicatorCount(state);

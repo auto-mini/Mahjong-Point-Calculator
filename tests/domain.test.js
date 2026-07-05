@@ -420,6 +420,43 @@ test("chankan requires the winning tile to be in a closed sequence", () => {
   assert.equal(errors.includes("창깡 화료패는 슌쯔 구성패 중에서 선택해야 합니다."), true);
 });
 
+test("chankan rejects extra visible copies of the robbed tile", () => {
+  const extraInHand = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, riichi: true, none: false },
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["m3", "m3", "m3"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["east"],
+    uraIndicators: ["south"],
+  }));
+  assert.equal(extraInHand.includes("창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다."), true);
+
+  const extraIndicator = validateState(createStateFromMelds({
+    winMethod: "ron",
+    roundWind: "east",
+    seatWind: "south",
+    situation: { chankan: true, none: false },
+    melds: [
+      { tiles: ["m1", "m2", "m3"] },
+      { tiles: ["p2", "p3", "p4"] },
+      { tiles: ["p5", "p6", "p7"] },
+      { tiles: ["s2", "s3", "s4"] },
+      { tiles: ["east", "east"] },
+    ],
+    winTile: "m3",
+    doraIndicators: ["m3"],
+  }));
+  assert.equal(extraIndicator.includes("창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다."), true);
+});
+
 test("chankan candidates come from automatic decomposition, not input grouping", () => {
   const melds = [
     { tiles: ["m1", "m1", "m1"] },

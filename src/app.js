@@ -10,6 +10,7 @@
   decomposeHand,
   encodeShareState,
   flattenMelds,
+  normalizeTile,
   sanitizeRecentItems,
   tileLabel,
   validateVisibleTiles,
@@ -960,6 +961,14 @@ function handContextErrorsFor(targetState) {
   if (isHandComplete(targetState.melds) && targetState.situation.chankan && !currentWinningTileCandidates(targetState.melds, targetState.situation).length) {
     messages.push("창깡은 슌쯔를 완성하는 화료만 가능합니다.");
   }
+  if (
+    isHandComplete(targetState.melds) &&
+    targetState.situation.chankan &&
+    targetState.winTile &&
+    sameNormalizedTileCount(flattenMelds(targetState.melds), targetState.winTile) > 1
+  ) {
+    messages.push("창깡 화료패와 같은 패가 손패에 추가로 있으면 안 됩니다.");
+  }
   return messages;
 }
 
@@ -1001,7 +1010,21 @@ function doraValidationErrors() {
     ...dora.filter(Boolean),
     ...((state.situation.riichi || state.situation.doubleRiichi) ? normalizedSlots(state.uraIndicators).filter(Boolean) : []),
   ]));
+  if (state.situation.chankan && state.winTile) {
+    const chankanVisibleTiles = [
+      ...flattenMelds(state.melds),
+      ...dora.filter(Boolean),
+      ...((state.situation.riichi || state.situation.doubleRiichi) ? normalizedSlots(state.uraIndicators).filter(Boolean) : []),
+    ];
+    const message = "창깡 화료패와 같은 패가 손패/표시패에 추가로 있으면 안 됩니다.";
+    if (sameNormalizedTileCount(chankanVisibleTiles, state.winTile) > 1 && !messages.includes(message)) messages.push(message);
+  }
   return messages;
+}
+
+function sameNormalizedTileCount(tiles, targetTile) {
+  const target = normalizeTile(targetTile);
+  return tiles.filter((tile) => normalizeTile(tile) === target).length;
 }
 
 function leadingCount(values) {
