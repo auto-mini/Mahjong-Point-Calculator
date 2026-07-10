@@ -1,7 +1,7 @@
 # 리치마작 부수계산기 구현/검증 요약
 
 작성일: 2026-07-04
-최종 갱신: 2026-07-05
+최종 갱신: 2026-07-10
 
 ## 구현 요약
 
@@ -31,11 +31,13 @@
 최근 확인 명령:
 
 - `scripts/run.ps1 test`
-  - 75개 테스트 통과
+  - 전체 테스트 통과
 - `scripts/run.ps1 verify`
   - 정적 앱 필수 파일, CSP meta, favicon, 라이선스 확인 통과
 - `scripts/run.ps1 build`
   - `dist/` 생성 및 산출물 검증 통과
+- `npm run test:e2e`
+  - 320px, 360px, 390px, 430px의 모바일 레이아웃·터치 타깃·키보드 포커스 회귀 테스트 통과
 
 ## 주요 테스트 범위
 
@@ -84,4 +86,6 @@
 
 - 공개 URL: `https://auto-mini.github.io/Mahjong-Point-Calculator/`
 - 공개 산출물에서 `docs/`, `tests/`, `work/` 경로가 노출되지 않음을 확인했다.
-- GitHub Pages는 `_headers`를 적용하지 않으므로, 공개 사이트의 CSP/Referrer 정책은 `index.html`의 meta 태그가 담당한다.
+- GitHub Pages는 `_headers`를 응답 헤더로 적용하지 않으므로 빌드 산출물에서 해당 파일을 제거했다.
+- 공개 사이트의 CSP/Referrer 정책은 `index.html`의 meta 태그가 담당하며, 빌드 검증에서 요구 정책 전체가 정확히 유지되는지 확인한다.
+- 로컬 미리보기 서버는 CSP, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` 응답 헤더를 별도로 적용하며 자동 테스트로 확인한다.

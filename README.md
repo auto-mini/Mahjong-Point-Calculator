@@ -38,6 +38,7 @@ https://auto-mini.github.io/Mahjong-Point-Calculator/
 - 국사무쌍, 천화, 지화 등 역만 전용 입력 흐름은 지원하지 않습니다.
 - 유국만관은 지원하지 않습니다.
 - 공탁금 입력은 지원하지 않습니다.
+- 본장은 초보자용 빠른 입력 흐름을 위해 0~8본장만 지원합니다.
 - 도라 표시패를 실제보다 많이 입력했는지는 앱이 확정할 수 없으므로 초과 입력은 허용합니다. 다만 필요한 최소 개수보다 적거나 중간 칸이 비어 있으면 오류로 처리합니다.
 - 과거 버전 공유 링크 호환성은 높은 우선순위가 아닙니다. 현재 버전에서 생성한 공유 링크가 복원되는 것을 우선합니다.
 
@@ -47,7 +48,8 @@ https://auto-mini.github.io/Mahjong-Point-Calculator/
 - 최근 계산은 현재 브라우저의 `localStorage`에만 저장됩니다.
 - 공유 상태는 URL fragment(`#s=`)에 저장됩니다. fragment는 일반 HTTP 요청에 포함되지 않습니다.
 - 사용자 입력을 HTML 문자열로 직접 삽입하지 않습니다.
-- HTML과 배포 산출물에 Content Security Policy를 적용합니다.
+- GitHub Pages 공개 사이트의 Content Security Policy와 referrer 정책은 `index.html`의 meta 태그로 적용합니다. GitHub Pages는 저장소의 `_headers` 파일을 응답 헤더로 적용하지 않습니다.
+- 로컬 미리보기 서버는 Content Security Policy, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` 응답 헤더를 추가합니다.
 - 정적 배포물에는 `docs/`, `tests/`, `work/`, `.git` 같은 개발 파일을 포함하지 않습니다.
 
 ## 로컬 실행
@@ -74,10 +76,12 @@ powershell -ExecutionPolicy Bypass -File scripts/run.ps1 preview-lan
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run.ps1 test
 powershell -ExecutionPolicy Bypass -File scripts/run.ps1 build
+npm ci
+npm run test:e2e
 ```
 
-현재 테스트는 계산, 도라/우라, 깡 직후 판정, 공유 상태 복원, 최근 계산 정리, 정적 서버 보안을 확인합니다.
-빌드 결과물은 `dist/`에 생성됩니다.
+기본 테스트는 계산, 도라/우라, 깡 직후 판정, 공유 상태 복원, 최근 계산 정리, 정적 서버 보안을 확인합니다. Playwright 회귀 테스트는 320px, 360px, 390px, 430px에서 1~4페이지의 기본/확대 버튼 모드, 가로 넘침, 터치 타깃, 핵심 키보드 포커스를 확인합니다.
+빌드 결과물은 `dist/`에 생성되며, GitHub Pages에서 특별한 의미 없이 공개 파일이 되는 `_headers`는 포함하지 않습니다.
 
 ## 배포
 

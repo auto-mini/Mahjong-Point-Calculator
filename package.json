@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/domain.test.js tests/server.test.js",
+    "test:e2e": "npm run build && playwright test --config tests/browser/playwright.config.js",
     "verify": "node scripts/verify-static-app.js .",
     "build": "node scripts/build-static.js && node scripts/verify-static-app.js dist",
     "preview": "node scripts/serve.js --root dist",
     "preview:lan": "node scripts/serve.js --root dist --host 0.0.0.0",
     "start": "node scripts/serve.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
   }
 }

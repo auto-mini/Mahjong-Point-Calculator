@@ -23,6 +23,7 @@ const LARGE_TOUCH_KEY = "riichi-fu-calculator-large-touch-v1";
 const RECENT_STORAGE_MAX_LENGTH = 80_000;
 const app = document.querySelector("#app");
 const TILE_ASSET_ROOT = "./assets/tiles/b2";
+const APP_FOCUSABLE_SELECTOR = "button, textarea, input, select, a[href], [tabindex]:not([tabindex='-1'])";
 const WIN_TILE_REQUIRED_TEXT = "화료패를 선택해주세요.";
 const CANDIDATE_KIND_ORDER = ["pair", "sequence", "triplet", "quad"];
 const TILE_ASSET_FILES = {
@@ -78,6 +79,8 @@ let modal = null;
 let modalReturnFocus = null;
 let latestResult = null;
 let renderVersion = 0;
+let renderedStep = null;
+let pendingAppFocus = null;
 let largeTouch = loadLargeTouchPreference();
 let fuDetailsExpanded = false;
 const TAP_ACTIVATION_DELAY_MS = 140;
@@ -261,33 +264,103 @@ function attachTapFeedback(node, onClick, instantClick = false) {
     release();
     snap();
     if (!onClick) return;
-    if (instantClick) {
+    const activate = () => {
+      pendingAppFocus = appFocusSnapshot(node);
+      const activationRenderVersion = renderVersion;
       onClick(event);
+      if (renderVersion === activationRenderVersion) pendingAppFocus = null;
+    };
+    if (instantClick) {
+      activate();
       return;
     }
     event.preventDefault();
     window.setTimeout(() => {
       if (!node.isConnected || clickRenderVersion !== renderVersion) return;
-      onClick(event);
+      activate();
     }, TAP_ACTIVATION_DELAY_MS);
   });
 }
 
 function render({ preserveModalFocus = false } = {}) {
   const modalFocus = preserveModalFocus ? modalFocusSnapshot() : null;
+  const appFocus = pendingAppFocus || appFocusSnapshot();
+  pendingAppFocus = null;
+  const pageChanged = renderedStep !== null && renderedStep !== step;
   renderVersion += 1;
   latestResult = calculate(state);
   app.classList.toggle("large-touch", largeTouch);
+  document.body.classList.toggle("large-touch-mode", largeTouch);
   clearModalNodes();
   app.replaceChildren(nav(), page());
+  renderedStep = step;
   const modalNodes = renderModal();
   app.inert = modalNodes.length > 0;
   if (modalNodes.length) app.setAttribute("aria-hidden", "true");
   else app.removeAttribute("aria-hidden");
   document.body.append(...modalNodes);
   if (restoreModalFocusSnapshot(modalFocus)) return;
-  focusModal();
-  if (!modalNodes.length) focusIndicatorControl();
+  if (modalNodes.length) {
+    focusModal();
+    return;
+  }
+  if (pageChanged) {
+    focusPageHeading();
+    return;
+  }
+  if (picker || pendingIndicatorFocus) {
+    focusIndicatorControl();
+    return;
+  }
+  restoreAppFocusSnapshot(appFocus);
+}
+
+function appFocusSnapshot(active = document.activeElement) {
+  if (!(active instanceof HTMLElement) || !app.contains(active)) return null;
+  const focusable = focusableAppElements();
+  return {
+    focusKey: active.getAttribute("data-focus-key") || active.getAttribute("data-indicator-slot"),
+    tagName: active.tagName,
+    ariaLabel: active.getAttribute("aria-label"),
+    text: active.textContent?.trim() || "",
+    position: focusable.indexOf(active),
+  };
+}
+
+function restoreAppFocusSnapshot(snapshot) {
+  if (!snapshot) return false;
+  const focusable = focusableAppElements();
+  const target = (snapshot.focusKey
+    ? Array.from(app.querySelectorAll("[data-focus-key], [data-indicator-slot]")).find((node) =>
+        (node.getAttribute("data-focus-key") || node.getAttribute("data-indicator-slot")) === snapshot.focusKey
+      )
+    : null)
+    || (snapshot.ariaLabel
+      ? focusable.find((node) => node.tagName === snapshot.tagName && node.getAttribute("aria-label") === snapshot.ariaLabel)
+      : null)
+    || (snapshot.text
+      ? focusable.find((node) => node.tagName === snapshot.tagName && node.textContent?.trim() === snapshot.text)
+      : null)
+    || (snapshot.position >= 0 && focusable.length
+      ? focusable[Math.min(snapshot.position, focusable.length - 1)]
+      : null);
+  if (!(target instanceof HTMLElement)) return false;
+  requestAnimationFrame(() => {
+    if (target.isConnected && !modal) target.focus();
+  });
+  return true;
+}
+
+function focusableAppElements() {
+  return Array.from(app.querySelectorAll(APP_FOCUSABLE_SELECTOR))
+    .filter((node) => !node.disabled && node.getAttribute("aria-hidden") !== "true");
+}
+
+function focusPageHeading() {
+  const heading = app.querySelector(".page-title h1");
+  requestAnimationFrame(() => {
+    if (heading instanceof HTMLElement && heading.isConnected && !modal) heading.focus();
+  });
 }
 
 function clearModalNodes() {
@@ -304,7 +377,7 @@ function nav() {
     : el("button", { className: "notice-button", text: "!", ariaLabel: "주의사항", title: "주의사항", onClick: () => openNotice() }));
   const title = el("div", { className: "page-title" }, [
     el("div", { className: "page-kicker", text: `${step}/4` }),
-    el("h1", { text: titles[step - 1] }),
+    el("h1", { text: titles[step - 1], attrs: { tabindex: "-1", "data-focus-key": "page-heading" } }),
   ]);
   topbar.append(title);
   topbar.append(el("div", { className: "top-actions" }, [
@@ -314,6 +387,7 @@ function nav() {
       text: largeTouch ? "기본 버튼" : "버튼 확대",
       ariaLabel: largeTouch ? "기본 버튼 크기로 전환" : "버튼 확대 모드로 전환",
       ariaPressed: largeTouch,
+      attrs: { "data-focus-key": "touch-toggle" },
       onClick: () => setLargeTouchPreference(!largeTouch),
     }),
   ]));
@@ -978,7 +1052,11 @@ function fuBreakdownRows(result) {
           className: "result-line result-line-button",
           ariaLabel: `커쯔/깡쯔 +${meldTotal} ${fuDetailsExpanded ? "접기" : "펼치기"}`,
           ariaPressed: fuDetailsExpanded,
-          attrs: { "aria-expanded": String(fuDetailsExpanded) },
+          attrs: {
+            "aria-expanded": String(fuDetailsExpanded),
+            "aria-controls": "fu-meld-details",
+            "data-focus-key": "fu-meld-toggle",
+          },
           onClick: () => toggleFuDetails(),
           title: fuDetailsExpanded ? "커쯔/깡쯔 세부 부수 접기" : "커쯔/깡쯔 세부 부수 보기",
         }, [
@@ -986,7 +1064,7 @@ function fuBreakdownRows(result) {
           el("span", { className: "result-line-right", text: `+${meldTotal} ${fuDetailsExpanded ? "▲" : "▼"}` }),
         ]));
         if (fuDetailsExpanded) {
-          rows.push(el("div", { className: "fu-detail-lines" }, meldLines.map((detailLine) => pairRow("result-line fu-detail-line", detailLine.name, `+${detailLine.fu}`))));
+          rows.push(el("div", { className: "fu-detail-lines", attrs: { id: "fu-meld-details" } }, meldLines.map((detailLine) => pairRow("result-line fu-detail-line", detailLine.name, `+${detailLine.fu}`))));
         }
         meldSummaryAdded = true;
       }

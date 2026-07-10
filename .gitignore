@@ -1,6 +1,9 @@
 work/__pycache__/
 work/*.png
 dist/
+node_modules/
+playwright-report/
+test-results/
 
 # Downloaded reference/font/tile source trees used during exploration.
 work/gmarket-sans/

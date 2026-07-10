@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = process.argv[2] || ".";
+const expectedMetaCsp = "default-src 'self'; img-src 'self' data:; font-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self'";
 const tileFiles = [
   "Man1.png",
   "Man2.png",
@@ -61,7 +62,7 @@ if (root === ".") {
   await access("tests/domain.test.js");
 }
 
-const forbiddenInDist = ["docs", "outputs", "tests", "work", ".git"];
+const forbiddenInDist = ["docs", "outputs", "tests", "work", ".git", "_headers"];
 if (root !== ".") {
   for (const name of forbiddenInDist) {
     await access(join(root, name))
@@ -75,31 +76,24 @@ if (root !== ".") {
 }
 
 const html = await readFile(join(root, "index.html"), "utf8").catch(() => "");
-if (html && !html.includes('type="module"')) {
+if (!html.includes('type="module"')) {
   throw new Error("index.html must load the app as a module");
 }
-if (html && !html.includes('rel="icon"')) {
+if (!html.includes('rel="icon"')) {
   throw new Error("index.html must include a favicon link to avoid a missing icon request");
 }
-if (html && !html.includes('http-equiv="Content-Security-Policy"')) {
+if (!html.includes('http-equiv="Content-Security-Policy"')) {
   throw new Error("index.html must include a meta Content-Security-Policy for GitHub Pages");
 }
-if (html && !html.includes("font-src 'self'")) {
-  throw new Error("index.html Content-Security-Policy must allow self-hosted fonts");
+if (!html.includes(`content="${expectedMetaCsp}"`)) {
+  throw new Error("index.html meta Content-Security-Policy must match the required GitHub Pages policy");
 }
-if (html && !html.includes('name="referrer" content="no-referrer"')) {
+if (!html.includes('name="referrer" content="no-referrer"')) {
   throw new Error("index.html must include a no-referrer policy");
 }
 
 if (root !== ".") {
   await access(join(root, ".nojekyll"));
-  const headers = await readFile(join(root, "_headers"), "utf8").catch(() => "");
-  if (!headers.includes("Content-Security-Policy: default-src 'self'")) {
-    throw new Error("dist _headers must include the Content-Security-Policy header");
-  }
-  if (!headers.includes("X-Content-Type-Options: nosniff")) {
-    throw new Error("dist _headers must include X-Content-Type-Options");
-  }
 }
 
 const tileLicense = await readFile(join(root, "assets/tiles/LICENSE.md"), "utf8").catch(() => "");

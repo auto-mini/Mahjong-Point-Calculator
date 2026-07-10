@@ -383,7 +383,9 @@ h1 {
 }
 
 .large-touch .choice,
-.large-touch .candidate-action {
+.large-touch .candidate-action,
+.large-touch .secondary-action,
+.large-touch .result-line-button {
   min-height: 42px;
 }
 
@@ -682,7 +684,7 @@ h1 {
 }
 
 .large-touch .tile-grid {
-  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-w: clamp(40px, 12vw, 42px);
   --tile-h: calc(var(--tile-w) * 1.326);
   gap: 8px;
   margin-left: 0;
@@ -719,7 +721,7 @@ h1 {
 }
 
 .large-touch .selected-tile-row {
-  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-w: clamp(40px, 12vw, 42px);
   --tile-h: calc(var(--tile-w) * 1.326);
 }
 
@@ -804,7 +806,7 @@ h1 {
 }
 
 .large-touch .win-candidates {
-  --tile-w: clamp(38px, 12vw, 42px);
+  --tile-w: clamp(40px, 12vw, 42px);
   --tile-h: calc(var(--tile-w) * 1.326);
   gap: 8px;
 }
@@ -861,14 +863,14 @@ h1 {
 }
 
 .large-touch .meld-remove {
-  width: 32px;
-  height: 32px;
-  right: -13px;
-  top: -13px;
+  width: 40px;
+  height: 40px;
+  right: -16px;
+  top: -16px;
 }
 
 .large-touch .meld-remove::before {
-  inset: 4px;
+  inset: 8px;
 }
 
 .slot .tile {
@@ -1104,6 +1106,12 @@ h1 {
   font-size: 12px;
   line-height: 1.45;
   resize: vertical;
+}
+
+.large-touch-mode .sheet .icon-button,
+.large-touch-mode .sheet .recent-item,
+.large-touch-mode .sheet .secondary-action {
+  min-height: 42px;
 }
 
 @media (min-width: 700px) {
